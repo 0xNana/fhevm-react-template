@@ -48,13 +48,26 @@ program
 
 // Load configuration from environment
 const loadConfig = (): FHEVMConfig => {
-  const rpcUrl = process.env.RPC_URL || process.env.FHEVM_RPC_URL || 'https://sepolia.infura.io/v3/YOUR_INFURA_KEY'
-  const chainId = parseInt(process.env.CHAIN_ID || process.env.FHEVM_CHAIN_ID || '11155111')
+  const mockMode = shouldUseMockMode()
+  
+  if (mockMode) {
+    return {
+      rpcUrl: 'http://localhost:8545',
+      chainId: 31337,
+      mockChains: {
+        31337: 'http://localhost:8545'
+      }
+    }
+  }
+  
+  // Only use real blockchain if explicitly configured
+  const rpcUrl = process.env.RPC_URL || process.env.MOCK_RPC_URL || 'http://localhost:8545'
+  const chainId = parseInt(process.env.CHAIN_ID || process.env.MOCK_CHAIN_ID || '31337')
   
   return {
     rpcUrl,
     chainId,
-  mockChains: {
+    mockChains: {
       31337: 'http://localhost:8545'
     }
   }

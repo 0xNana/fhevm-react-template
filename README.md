@@ -1,23 +1,23 @@
-# 🚀 Universal FHEVM SDK
+# Universal FHEVM SDK
 
 **The complete toolkit for building confidential dApps with FHEVM**
 
 A universal, framework-agnostic SDK that provides everything you need to build confidential applications with fully homomorphic encryption on Ethereum.
 
-## ✨ Features
+## Features
 
-- 🔐 **Universal SDK** - Works in React, Vue, Node.js, and vanilla JavaScript
-- 🎯 **Wagmi-like API** - Intuitive, modular interface familiar to Web3 developers
-- 🔑 **EIP-712 Signing** - Secure user decryption with wallet signatures
-- 🌐 **Multi-Environment** - Next.js, Vue, and Node.js examples
-- 📦 **Zero Config** - Works out of the box with sensible defaults
-- 🧙‍♂️ **Interactive Wizard** - Guided setup and testing experience
-- 🛠️ **Comprehensive CLI** - Command-line interface for all operations
-- 🔄 **Mock Mode** - Auto-detection for easy development (no Windows API issues)
-- 📚 **TypeScript First** - Full type safety and IntelliSense
-- 🔄 **Cross-Framework** - Data encrypted in one framework works in another
+-  **Universal SDK** - Works in React, Vue, Node.js, and vanilla JavaScript
+-  **Wagmi-like API** - Intuitive, modular interface familiar to Web3 developers
+-  **EIP-712 Signing** - Secure user decryption with wallet signatures
+-  **Multi-Environment** - Next.js, Vue, and Node.js examples
+-  **Zero Config** - Works out of the box with sensible defaults
+-  **Interactive Wizard** - Guided setup and testing experience
+-  **Comprehensive CLI** - Command-line interface for all operations
+-  **Mock Mode** - Auto-detection for easy development (no Windows API issues)
+-  **TypeScript First** - Full type safety and IntelliSense
+-  **Cross-Framework** - Data encrypted in one framework works in another
 
-## 🏗️ Architecture
+##  Architecture
 
 ### **Universal FHEVM SDK Structure**
 
@@ -75,7 +75,7 @@ A universal, framework-agnostic SDK that provides everything you need to build c
                    └─────────────┘
 ```
 
-## 🚀 Quick Start (< 2 minutes)
+##  Quick Start (< 2 minutes)
 
 ### 1. Install & Setup
 
@@ -110,7 +110,7 @@ pnpm demo:voting  # Voting operations
 pnpm examples
 ```
 
-## 🔄 Framework Integration
+##  Framework Integration
 
 ### **React Integration**
 ```
@@ -148,7 +148,7 @@ pnpm examples
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
-## 🌐 Live Demos
+##  Live Demos
 
 - **Next.js Demo**: [https://mynextdpoc.vercel.app](https://mynextpoc.vercel.app) 
 - **Vue Demo**: [https://myvuedpoc.vercel.app](https://myvuepoc.vercel.app) 
@@ -156,7 +156,7 @@ pnpm examples
 
 > **Note**: Deployment links will be updated once deployed. All examples work locally with `pnpm dev`, `pnpm vue:dev`, and `pnpm cli:start`.
 
-## 📦 Installation
+##  Installation
 
 ```bash
 # Install the SDK
@@ -166,7 +166,7 @@ npm install @fhevm/sdk
 pnpm add @fhevm/sdk
 ```
 
-## 🎯 Basic Usage
+##  Basic Usage
 
 ### Core SDK (Framework Agnostic)
 
@@ -351,7 +351,7 @@ pnpm node:build   # Build for production
 pnpm node:start   # Start production server
 ```
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 packages/
@@ -371,13 +371,13 @@ packages/
 
 ### Key Components
 
-- **🧙‍♂️ Interactive Wizard**: Guided setup and testing experience
-- **🔄 Mock Mode**: Auto-detection for easy development
-- **📦 Universal SDK**: Framework-agnostic core
-- **🛠️ Comprehensive CLI**: All FHEVM operations
-- **🌐 Cross-Framework**: Data compatibility across frameworks
+- ** Interactive Wizard**: Guided setup and testing experience
+- ** Mock Mode**: Auto-detection for easy development
+- ** Universal SDK**: Framework-agnostic core
+- ** Comprehensive CLI**: All FHEVM operations
+- ** Cross-Framework**: Data compatibility across frameworks
 
-## 🔐 Encryption & Decryption
+##  Encryption & Decryption
 
 ### Public Decryption (No Signature)
 
@@ -410,7 +410,7 @@ const decrypted = await client.decrypt({
 })
 ```
 
-## 🎨 Reusable Components
+##  Reusable Components
 
 ### React Components
 
@@ -431,7 +431,7 @@ import { FHEVMProvider, EncryptButton, DecryptButton } from '@fhevm/sdk/react'
 </FHEVMProvider>
 ```
 
-## 📚 Examples
+##  Examples
 
 ### Complete Examples
 
@@ -543,7 +543,7 @@ const config = {
 }
 ```
 
-## 🚀 Getting Started Checklist
+##  Getting Started Checklist
 
 - [ ] Clone repository: `git clone ... && cd fhevm-react-template`
 - [ ] Install dependencies: `pnpm install`
@@ -569,7 +569,7 @@ const config = {
 ### ✅ **Production Ready**
 - **Error Handling**: Robust error recovery
 
-## 🏆 **Winning Features Summary**
+##  **Winning Features Summary**
 
 ```
 ✅ 3x Framework Support (React + Vue + Node.js)
@@ -587,11 +587,11 @@ const config = {
 - **Performance**: Lazy loading, caching, optimization
 - **Documentation**: Comprehensive guides and examples
 
-## 🤝 Contributing
+##  Contributing
 
 This is part of the Universal FHEVM SDK. Contributions are welcome!
 
-## 📄 License
+##  License
 
 BSD-3-Clause-Clear License
 
