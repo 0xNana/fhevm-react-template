@@ -150,9 +150,9 @@ pnpm examples
 
 ## 🌐 Live Demos
 
-- **Next.js Demo**: [https://your-nextjs-demo.vercel.app](https://your-nextjs-demo.vercel.app) - *Required showcase*
-- **Vue Demo**: [https://your-vue-demo.netlify.app](https://your-vue-demo.netlify.app) - *Optional*
-- **Node.js API**: [https://your-node-api.herokuapp.com](https://your-node-api.herokuapp.com) - *Optional*
+- **Next.js Demo**: [https://mynextdpoc.vercel.app](https://mynextpoc.vercel.app) 
+- **Vue Demo**: [https://myvuedpoc.vercel.app](https://myvuepoc.vercel.app) 
+
 
 > **Note**: Deployment links will be updated once deployed. All examples work locally with `pnpm dev`, `pnpm vue:dev`, and `pnpm cli:start`.
 
@@ -175,7 +175,7 @@ import { createFHEVMClient } from '@fhevm/sdk'
 
 // Create client
 const client = createFHEVMClient({
-  rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_API_KEY',
+  rpcUrl: 'https://sepolia.infura.io/v3/INPUT_YOUR_INFURA_API_KEY_HERE',
   chainId: 11155111
 })
 
@@ -523,7 +523,7 @@ Create a `.env` file in the root:
 
 ```bash
 # Required
-RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_API_KEY
+RPC_URL=https://sepolia.infura.io/v3/INPUT_YOUR_INFURA_API_KEY_HERE
 CHAIN_ID=11155111
 
 # Optional
@@ -535,7 +535,7 @@ MNEMONIC="..."     # Alternative to PRIVATE_KEY
 
 ```typescript
 const config = {
-  rpcUrl: 'https://sepolia.infura.io/v3/YOUR_INFURA_API_KEY',
+  rpcUrl: 'https://sepolia.infura.io/v3/INPUT_YOUR_INFURA_API_KEY_HERE',
   chainId: 11155111,
   mockChains: {
     31337: 'http://localhost:8545' // Local development
@@ -597,4 +597,4 @@ BSD-3-Clause-Clear License
 
 ---
 
-**Ready to build confidential dApps?** Run `pnpm quickstart` to get started! 🚀
+**Ready to build confidential dApps?** Run `pnpm fhevm:wizard` to get started! 🚀
