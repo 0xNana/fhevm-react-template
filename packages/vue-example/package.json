@@ -1,0 +1,37 @@
+{
+  "name": "fhevm-vue-example",
+  "version": "1.0.0",
+  "description": "Vue 3 example application for Universal FHEVM SDK",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@fhevm/sdk": "workspace:*",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.0",
+    "pinia": "^2.1.0",
+    "@vueuse/core": "^10.7.0",
+    "@reown/appkit": "^1.8.11",
+    "@reown/appkit-adapter-wagmi": "^1.8.11",
+    "@tanstack/vue-query": "^5.90.5",
+    "@wagmi/vue": "^0.2.14",
+    "wagmi": "^2.17.5",
+    "viem": "^2.38.4",
+    "zod": "^3.23.8",
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "@vue/tsconfig": "^0.5.0",
+    "typescript": "~5.8.2",
+    "vite": "^5.0.0",
+    "vue-tsc": "^2.0.0",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0"
+  }
+}

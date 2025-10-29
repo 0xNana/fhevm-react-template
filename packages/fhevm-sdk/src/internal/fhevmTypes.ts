@@ -1,4 +1,4 @@
-import type { FhevmInstance, FhevmInstanceConfig } from "../fhevmTypes";
+import type { FhevmInstance, FhevmInstanceConfig } from "../types.js";
 
 export type FhevmInitSDKOptions = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

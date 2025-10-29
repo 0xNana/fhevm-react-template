@@ -1,0 +1,56 @@
+{
+  "name": "@fhevm/vue",
+  "version": "1.0.0",
+  "description": "Vue composables and utilities for FHEVM - Universal FHEVM SDK",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "fhevm",
+    "fhe",
+    "confidential",
+    "encryption",
+    "blockchain",
+    "ethereum",
+    "vue",
+    "composables"
+  ],
+  "author": "FHEVM Team",
+  "license": "BSD-3-Clause-Clear",
+  "dependencies": {
+    "@fhevm/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@wagmi/vue": "^0.2.0",
+    "ethers": "^6.0.0",
+    "vue": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "~18.19.50",
+    "@vitest/coverage-v8": "2.1.9",
+    "ethers": "^6.15.0",
+    "fake-indexeddb": "~6.0.0",
+    "jsdom": "^27.0.0",
+    "typescript": "~5.8.2",
+    "vitest": "~2.1.8",
+    "vue": "^3.4.0"
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"useInMemoryStorage.d.ts","sourceRoot":"","sources":["../../src/composables/useInMemoryStorage.ts"],"names":[],"mappings":"AAGA;;;;GAIG;AACH,wBAAgB,kBAAkB;;;;;;;eAIR,MAAM,KAAG,OAAO,CAAC,MAAM,GAAG,IAAI,CAAC;eAI/B,MAAM,SAAS,MAAM,KAAG,OAAO,CAAC,IAAI,CAAC;kBAIlC,MAAM,KAAG,OAAO,CAAC,IAAI,CAAC;iBAIzB,OAAO,CAAC,IAAI,CAAC;EActC"}

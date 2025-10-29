@@ -1,5 +1,5 @@
-import { FhevmRelayerSDKType, FhevmWindowType } from "./fhevmTypes";
-import { SDK_CDN_URL } from "./constants";
+import { FhevmRelayerSDKType, FhevmWindowType } from "./fhevmTypes.js";
+import { SDK_CDN_URL } from "./constants.js";
 
 type TraceType = (message?: unknown, ...optionalParams: unknown[]) => void;
 
@@ -7,7 +7,9 @@ export class RelayerSDKLoader {
   private _trace?: TraceType;
 
   constructor(options: { trace?: TraceType }) {
-    this._trace = options.trace;
+    if (options.trace !== undefined) {
+      this._trace = options.trace;
+    }
   }
 
   public isLoaded() {

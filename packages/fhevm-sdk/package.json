@@ -1,58 +1,77 @@
 {
-  "name": "@fhevm-sdk",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@fhevm/sdk",
+  "version": "1.0.0",
+  "description": "Universal FHEVM SDK - Framework agnostic core for building confidential dApps",
   "type": "module",
   "main": "dist/index.js",
   "module": "dist/index.js",
-  "types": "src/index.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
+      "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./core": {
-      "types": "./src/core/index.ts",
-      "default": "./dist/core/index.js"
+    "./react": {
+      "types": "./dist/react/src/index.d.ts",
+      "default": "./dist/react/src/index.js"
     },
-    "./storage": {
-      "types": "./src/storage/index.ts",
-      "default": "./dist/storage/index.js"
+    "./vue": {
+      "types": "./dist/vue/src/index.d.ts",
+      "default": "./dist/vue/src/index.js"
+    },
+    "./node": {
+      "types": "./dist/node/src/index.d.ts",
+      "default": "./dist/node/src/index.js"
     },
     "./types": {
-      "types": "./src/fhevmTypes.ts",
-      "default": "./dist/fhevmTypes.js"
-    },
-    "./react": {
-      "types": "./src/react/index.ts",
-      "default": "./dist/react/index.js"
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json --watch",
     "clean": "rm -rf dist",
     "test": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
+  "keywords": [
+    "fhevm",
+    "fhe",
+    "confidential",
+    "encryption",
+    "blockchain",
+    "ethereum",
+    "sdk"
+  ],
+  "author": "FHEVM Team",
+  "license": "BSD-3-Clause-Clear",
   "dependencies": {
-    "idb": "^8.0.3"
-  },
-  "peerDependencies": {
+    "ethers": "^6.13.4",
+    "idb": "^8.0.3",
     "@fhevm/mock-utils": "^0.1.0",
     "@zama-fhe/relayer-sdk": "^0.2.0",
-    "ethers": "^6.13.4",
-    "react": "^18.0.0 || ^19.0.0"
+    "react": "^18.3.1",
+    "vue": "^3.4.0",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.0.0",
+    "inquirer": "^9.2.0",
+    "dotenv": "^16.3.0"
   },
   "devDependencies": {
     "@types/node": "~18.19.50",
-    "@types/react": "~19.0.7",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/commander": "^2.12.2",
+    "@types/inquirer": "^9.0.0",
     "@vitest/coverage-v8": "2.1.9",
-    "@zama-fhe/relayer-sdk": "0.2.0",
-    "ethers": "^6.13.7",
     "fake-indexeddb": "~6.0.0",
     "jsdom": "^27.0.0",
-    "react": "~19.0.0",
     "typescript": "~5.8.2",
     "vitest": "~2.1.8"
   }

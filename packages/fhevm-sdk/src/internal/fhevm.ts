@@ -1,19 +1,21 @@
 import { isAddress, Eip1193Provider, JsonRpcProvider } from "ethers";
-import type {
+import type { FhevmInstance } from "@zama-fhe/relayer-sdk/bundle";
+import type { FhevmInstanceConfig } from "@zama-fhe/relayer-sdk/web";
+import { FHEVMError, FHEVMAbortError } from "../types.js";
+
+export type {
   FhevmInitSDKOptions,
   FhevmInitSDKType,
   FhevmLoadSDKType,
   FhevmWindowType,
-} from "./fhevmTypes";
-import { isFhevmWindowType, RelayerSDKLoader } from "./RelayerSDKLoader";
-import { publicKeyStorageGet, publicKeyStorageSet } from "./PublicKeyStorage";
-import { FhevmInstance, FhevmInstanceConfig } from "../fhevmTypes";
+} from "./fhevmTypes.js";
 
-export class FhevmReactError extends Error {
-  code: string;
+import { isFhevmWindowType, RelayerSDKLoader } from "./RelayerSDKLoader.js";
+import { publicKeyStorageGet, publicKeyStorageSet } from "./PublicKeyStorage.js";
+
+export class FhevmReactError extends FHEVMError {
   constructor(code: string, message?: string, options?: ErrorOptions) {
-    super(message, options);
-    this.code = code;
+    super(message || "FHEVM React Error", code, options?.cause);
     this.name = "FhevmReactError";
   }
 }
@@ -33,14 +35,12 @@ const isFhevmInitialized = (): boolean => {
   return window.relayerSDK.__initialized__ === true;
 };
 
-const fhevmLoadSDK: FhevmLoadSDKType = () => {
+const fhevmLoadSDK = () => {
   const loader = new RelayerSDKLoader({ trace: console.log });
   return loader.load();
 };
 
-const fhevmInitSDK: FhevmInitSDKType = async (
-  options?: FhevmInitSDKOptions
-) => {
+const fhevmInitSDK = async (options?: any) => {
   if (!isFhevmWindowType(window, console.log)) {
     throw new Error("window.relayerSDK is not available");
   }
@@ -62,7 +62,7 @@ function checkIsAddress(a: unknown): a is `0x${string}` {
   return true;
 }
 
-export class FhevmAbortError extends Error {
+export class FhevmAbortError extends FHEVMAbortError {
   constructor(message = "FHEVM operation was cancelled") {
     super(message);
     this.name = "FhevmAbortError";
@@ -174,8 +174,8 @@ async function getFHEVMRelayerMetadata(rpcUrl: string) {
   }
 }
 
-type MockResolveResult = { isMock: true; chainId: number; rpcUrl: string };
-type GenericResolveResult = { isMock: false; chainId: number; rpcUrl?: string };
+type MockResolveResult = { isMock: true; chainId: number; rpcUrl: string | undefined };
+type GenericResolveResult = { isMock: false; chainId: number; rpcUrl: string | undefined };
 type ResolveResult = MockResolveResult | GenericResolveResult;
 
 async function resolve(
@@ -207,6 +207,7 @@ async function resolve(
 
 export const createFhevmInstance = async (parameters: {
   provider: Eip1193Provider | string;
+  chainId: number;
   mockChains?: Record<number, string>;
   signal: AbortSignal;
   onStatusChange?: (status: FhevmRelayerStatusType) => void;
@@ -224,13 +225,18 @@ export const createFhevmInstance = async (parameters: {
     onStatusChange,
     provider: providerOrUrl,
     mockChains,
+    chainId: providedChainId,
   } = parameters;
 
   // Resolve chainId
-  const { isMock, rpcUrl, chainId } = await resolve(providerOrUrl, mockChains);
+  const { isMock, rpcUrl } = await resolve(providerOrUrl, mockChains);
 
   if (isMock) {
     // Throws an error if cannot connect or url does not refer to a Web3 client
+    if (!rpcUrl) {
+      throw new Error("RPC URL is required for mock chains");
+    }
+    
     const fhevmRelayerMetadata =
       await tryFetchFHEVMHardhatNodeRelayerMetadata(rpcUrl);
 
@@ -245,10 +251,10 @@ export const createFhevmInstance = async (parameters: {
       // IN THE FINAL PRODUCTION BUNDLE!!
       // 
       //////////////////////////////////////////////////////////////////////////
-      const fhevmMock = await import("./mock/fhevmMock");
+      const fhevmMock = await import("./mock/fhevmMock.js");
       const mockInstance = await fhevmMock.fhevmMockCreateInstance({
         rpcUrl,
-        chainId,
+        chainId: providedChainId,
         metadata: fhevmRelayerMetadata,
       });
 
@@ -282,7 +288,7 @@ export const createFhevmInstance = async (parameters: {
     notify("sdk-initialized");
   }
 
-  const relayerSDK = (window as unknown as FhevmWindowType).relayerSDK;
+  const relayerSDK = (window as unknown as any).relayerSDK;
 
   const aclAddress = relayerSDK.SepoliaConfig.aclContractAddress;
   if (!checkIsAddress(aclAddress)) {

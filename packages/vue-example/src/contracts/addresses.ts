@@ -1,0 +1,8 @@
+// Contract addresses for deployed FHEVM contracts on Sepolia
+export const CONTRACT_ADDRESSES = {
+  FHECounter: import.meta.env.VITE_COUNTER_CONTRACT_ADDRESS || '0xaD920A4E9ACD84aA5F094e128b0d811eDB12F57F',
+  FHEVoting: import.meta.env.VITE_VOTING_CONTRACT_ADDRESS || '0x8eAf5350f6E26051f7902109BD3a8709abB6Fb14',
+  FHEBank: import.meta.env.VITE_BANK_CONTRACT_ADDRESS || '0xA020287B1670453919C2f49e2e8c2C09B96101B8',
+} as const
+
+export type ContractName = keyof typeof CONTRACT_ADDRESSES
