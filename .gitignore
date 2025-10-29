@@ -2,9 +2,8 @@
 .env.local
 .env.development
 .env.production
-.env.*
-!*.example
-!.env.example
+.env.staging
+.env.development
 node_modules
 .DS_Store
 packages/*/node_modules

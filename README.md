@@ -597,4 +597,4 @@ BSD-3-Clause-Clear License
 
 ---
 
-**Ready to build confidential dApps?** Run `pnpm fhevm:wizard` to get started! 🚀
+**Ready to build confidential dApps?** Run `pnpm quickstart` to get started! 

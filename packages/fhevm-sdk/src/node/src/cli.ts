@@ -133,7 +133,7 @@ program
       
       if (action === 'install') {
         console.log(chalk.green('\n✅ Dependencies are already installed!'))
-        console.log(chalk.gray('Run pnpm fhevm-node --help to see available commands.'))
+        console.log(chalk.gray('Run pnpm fhevm-cli --help to see available commands.'))
         return
       }
       
