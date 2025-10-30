@@ -242,6 +242,57 @@ const { decrypt, isDecrypting } = useDecryption(instance, {
 </script>
 ```
 
+### Node.js CLI & Utilities
+
+```typescript
+import { createFHEVMClientForNode, encryptValue, decryptValue } from '@fhevm/sdk/node'
+
+// Create client (auto-detects mock mode)
+const client = createFHEVMClientForNode({
+  rpcUrl: 'http://localhost:8545', // Mock mode default
+  chainId: 31337
+})
+
+// Initialize
+await client.initialize()
+
+// Encrypt value
+const encrypted = await encryptValue(42, '0x...', client)
+
+// Decrypt handle
+const decrypted = await decryptValue(
+  '0x...', // handle
+  '0x...', // contract address
+  client,
+  { usePublicDecrypt: true }
+)
+```
+
+### Node.js Server-Side
+
+```typescript
+import { createFHEVMClientForNode } from '@fhevm/sdk/node'
+import { ethers } from 'ethers'
+
+// Server-side FHEVM operations
+const client = createFHEVMClientForNode({
+  rpcUrl: process.env.RPC_URL || 'http://localhost:8545',
+  chainId: parseInt(process.env.CHAIN_ID || '31337')
+})
+
+await client.initialize()
+
+// Batch operations
+const values = [1, 2, 3, 4, 5]
+const encrypted = await Promise.all(
+  values.map(value => encryptValue(value, publicKey, client))
+)
+
+// Contract interaction
+const contract = new ethers.Contract(address, abi, signer)
+const result = await contract.someFunction(encrypted[0])
+```
+
 ### Interactive Wizard (Recommended)
 
 ```bash
