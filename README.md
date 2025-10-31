@@ -2,11 +2,20 @@
 
 **The complete toolkit for building confidential dApps with FHEVM**
 
-A universal, framework-agnostic SDK that provides everything you need to build confidential applications with fully homomorphic encryption on Ethereum.
+A universal, framework-agnostic SDK that provides everything you need to build confidential applications with fully homomorphic encryption on any blockchain
+
+<div align="center">
+  
+  **🎥 [📺 View My Video Presentation Cover →](youtube-cover.html)**
+  
+  <sub>One SDK. All Frameworks. Zero Config.</sub>
+  
+</div>
+
 
 ## Features
 
--  **Universal SDK** - Works in React, Vue, Node.js, and vanilla JavaScript
+-  **Universal SDK** - Works in React, Vue, Node.js, and vanilla JS
 -  **Wagmi-like API** - Intuitive, modular interface familiar to Web3 developers
 -  **EIP-712 Signing** - Secure user decryption with wallet signatures
 -  **Multi-Environment** - Next.js, Vue, and Node.js examples
