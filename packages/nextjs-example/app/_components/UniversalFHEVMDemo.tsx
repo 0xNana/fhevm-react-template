@@ -60,10 +60,7 @@ export function UniversalFHEVMDemo() {
           Universal FHEVM SDK Demo
         </h1>
         <p className="text-xl text-gray-600 mb-2">
-          Framework-agnostic confidential computing with React, Vue, and Node.js
-        </p>
-        <p className="text-sm text-gray-500 mb-4">
-          Built for the Zama FHEVM Bounty Program - October 2025
+          Framework-agnostic SDK with React, Vue, and Node.js
         </p>
         
         {/* Video Link */}
