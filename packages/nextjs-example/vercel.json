@@ -1,3 +1,5 @@
 {
-  "installCommand": "yarn install"
+  "buildCommand": "cd ../.. && pnpm install && pnpm sdk:build && cd packages/nextjs-example && pnpm build",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "framework": "nextjs"
 }

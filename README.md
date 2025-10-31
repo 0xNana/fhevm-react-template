@@ -6,7 +6,7 @@ A universal, framework-agnostic SDK that provides everything you need to build c
 
 <div align="center">
   
-  **🎥 [📺 View My Video Presentation Cover →](youtube-cover.html)**
+  ** [ Watch My Video Presentation →](youtube-cover.html)**
   
   <sub>One SDK. All Frameworks. Zero Config.</sub>
   
@@ -159,11 +159,11 @@ pnpm examples
 
 ##  Live Demos
 
-- **Next.js Demo**: [https://mynextdpoc.vercel.app](https://mynextpoc.vercel.app) 
-- **Vue Demo**: [https://myvuedpoc.vercel.app](https://myvuepoc.vercel.app) 
+- **Next.js Demo**: [https://next.0xelegant.dev](https://next.0xelegant.dev) 
+- **Vue Demo**: [https://vue.0xelegant.dev](https://vue.0xelegant.dev) 
 
 
-> **Note**: Deployment links will be updated once deployed. All examples work locally with `pnpm dev`, `pnpm vue:dev`, and `pnpm cli:start`.
+> **Note**: Deployment links have been updated xD. All examples work locally with `pnpm dev`, `pnpm vue:dev`, and `pnpm cli:start`.
 
 ##  Installation
 
@@ -583,7 +583,7 @@ Create a `.env` file in the root:
 
 ```bash
 # Required
-RPC_URL=https://sepolia.infura.io/v3/INPUT_YOUR_INFURA_API_KEY_HERE
+RPC_URL=https://sepolia.infura.io/v3/PLS_SER_INPUT_YOUR_INFURA_API_KEY_HERE
 CHAIN_ID=11155111
 
 # Optional
@@ -595,7 +595,7 @@ MNEMONIC="..."     # Alternative to PRIVATE_KEY
 
 ```typescript
 const config = {
-  rpcUrl: 'https://sepolia.infura.io/v3/INPUT_YOUR_INFURA_API_KEY_HERE',
+  rpcUrl: 'https://sepolia.infura.io/v3/PLS_SER_INPUT_YOUR_INFURA_API_KEY_HERE',
   chainId: 11155111,
   mockChains: {
     31337: 'http://localhost:8545' // Local development
