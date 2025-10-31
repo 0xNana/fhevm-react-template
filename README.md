@@ -6,7 +6,7 @@ A universal, framework-agnostic SDK that provides everything you need to build c
 
 <div align="center">
   
-  ** [ Watch My Video Presentation →](youtube-cover.html)**
+  ### 🎥 [**Watch Video Presentation →**](https://youtu.be/VRxe3VqMzYI)
   
   <sub>One SDK. All Frameworks. Zero Config.</sub>
   
