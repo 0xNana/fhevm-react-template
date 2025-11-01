@@ -22,10 +22,19 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.zama.ai;"
+            value: "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.zama.org https://cdn.zama.ai;"
           }
         ]
       }
+    ];
+  },
+  // Proxy WASM file to bypass CORS issues
+  async rewrites() {
+    return [
+      {
+        source: '/relayer-sdk-js/:path*',
+        destination: 'https://cdn.zama.org/relayer-sdk-js/:path*',
+      },
     ];
   },
 };

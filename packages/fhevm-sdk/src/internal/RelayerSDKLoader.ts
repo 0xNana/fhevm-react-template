@@ -42,12 +42,70 @@ export class RelayerSDKLoader {
         `script[src="${SDK_CDN_URL}"]`
       );
       if (existingScript) {
+        // If script exists, wait for it to load if window.relayerSDK isn't ready yet
         if (!isFhevmWindowType(window, this._trace)) {
-          reject(
-            new Error(
-              "RelayerSDKLoader: window object does not contain a valid relayerSDK object."
-            )
-          );
+          // Script tag exists but hasn't loaded yet - wait for it
+          let resolved = false;
+          let checkInterval: ReturnType<typeof setInterval> | null = null;
+          
+          const cleanup = () => {
+            if (checkInterval) clearInterval(checkInterval);
+            checkInterval = null;
+          };
+          
+          const checkAndResolve = () => {
+            if (resolved) return;
+            if (isFhevmWindowType(window, this._trace)) {
+              resolved = true;
+              cleanup();
+              resolve();
+            }
+          };
+          
+          checkInterval = setInterval(checkAndResolve, 50);
+          
+          // Also listen for load and error events
+          existingScript.addEventListener('load', () => {
+            checkAndResolve();
+            if (!resolved && !isFhevmWindowType(window, this._trace)) {
+              resolved = true;
+              cleanup();
+              reject(
+                new Error(
+                  "RelayerSDKLoader: window object does not contain a valid relayerSDK object."
+                )
+              );
+            }
+          });
+          
+          existingScript.addEventListener('error', () => {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              reject(
+                new Error(
+                  `RelayerSDKLoader: Failed to load SDK script from existing script tag.`
+                )
+              );
+            }
+          });
+          
+          // Timeout after 5 seconds (reduced from 10)
+          setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              if (!isFhevmWindowType(window, this._trace)) {
+                reject(
+                  new Error(
+                    "RelayerSDKLoader: Timeout waiting for SDK script to load. This might be a network issue or the CDN might be blocked. Try copying WASM files locally using 'pnpm run copy-wasm'."
+                  )
+                );
+              }
+            }
+          }, 5000);
+          
+          return;
         }
         resolve();
         return;

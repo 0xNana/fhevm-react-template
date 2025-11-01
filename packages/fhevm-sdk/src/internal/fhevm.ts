@@ -40,16 +40,46 @@ const fhevmLoadSDK = () => {
   return loader.load();
 };
 
-const fhevmInitSDK = async (options?: any) => {
+const fhevmInitSDK = async (options?: any): Promise<boolean> => {
   if (!isFhevmWindowType(window, console.log)) {
     throw new Error("window.relayerSDK is not available");
   }
-  const result = await window.relayerSDK.initSDK(options);
-  window.relayerSDK.__initialized__ = result;
-  if (!result) {
-    throw new Error("window.relayerSDK.initSDK failed.");
+  
+  try {
+    const result = await window.relayerSDK.initSDK(options);
+    window.relayerSDK.__initialized__ = result;
+    if (!result) {
+      throw new Error("window.relayerSDK.initSDK returned false.");
+    }
+    return true;
+  } catch (error) {
+    // If initialization fails and no custom options were provided, try local fallback
+    if (!options && error instanceof Error) {
+      console.warn("[FHEVM] SDK initialization failed, trying local WASM files fallback:", error.message);
+      
+      try {
+        const localOptions = {
+          tfheParams: "/tfhe_bg.wasm",
+          kmsParams: "/kms_lib_bg.wasm"
+        };
+        console.log("[FHEVM] Attempting to initialize with local WASM files:", localOptions);
+        
+        const result = await window.relayerSDK.initSDK(localOptions);
+        window.relayerSDK.__initialized__ = result;
+        if (!result) {
+          throw new Error("window.relayerSDK.initSDK with local files returned false.");
+        }
+        console.log("[FHEVM] ✅ Successfully initialized with local WASM files");
+        return true;
+      } catch (fallbackError) {
+        console.error("[FHEVM] ❌ Local WASM fallback also failed:", fallbackError);
+        // Re-throw the original error, not the fallback error
+        throw error;
+      }
+    }
+    // If options were provided or it's not an Error, throw as-is
+    throw error;
   }
-  return true;
 };
 
 function checkIsAddress(a: unknown): a is `0x${string}` {
