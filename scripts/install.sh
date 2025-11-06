@@ -41,36 +41,8 @@ echo "✅ Prerequisites check passed"
 echo "📦 Installing all dependencies..."
 pnpm install
 
-# Build the Universal FHEVM SDK
-echo "🔨 Building Universal FHEVM SDK..."
-pnpm sdk:build
-
-# Build all examples
-echo "🎨 Building all examples..."
-pnpm next:build
-pnpm vue:build
-pnpm node:build
-
-# Build Hardhat contracts
-echo "⚒️ Building Hardhat contracts..."
-pnpm hardhat:compile
-
 echo "✅ Installation completed successfully!"
 echo ""
-echo "📋 Installed packages:"
-echo "  - @fhevm/sdk (Universal FHEVM SDK)"
-echo "  - @fhevm/node (Node.js utilities & CLI)"
-echo "  - Next.js example"
-echo "  - Vue.js example"
-echo "  - Node.js example"
-echo "  - Hardhat contracts"
-echo ""
-echo "🚀 Available commands:"
+echo "📋 Next steps:"
+echo "  pnpm build:all      - Build all packages"
 echo "  pnpm quickstart     - Quick setup with FHEVM CLI"
-echo "  pnpm examples       - Show all available examples"
-echo "  pnpm fhevm-node     - Universal FHEVM CLI"
-echo "  pnpm next:dev       - Start Next.js example"
-echo "  pnpm vue:dev        - Start Vue example"
-echo "  pnpm cli:start      - Start Node.js API server"
-echo ""
-echo "🎯 Ready to start developing!"

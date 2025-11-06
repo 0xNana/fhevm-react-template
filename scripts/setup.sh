@@ -17,36 +17,40 @@ fi
 echo "📦 Installing all packages..."
 bash scripts/install.sh
 
+# Build everything
+echo "🔨 Building all packages..."
+bash scripts/build.sh
+
 # Set up environment files
 echo "⚙️ Setting up environment files..."
 
 # Copy .env.example files if they don't exist
-if [ ! -f "packages/nextjs-example/.env" ]; then
+if [ -f "packages/nextjs-example/.env.example" ] && [ ! -f "packages/nextjs-example/.env" ]; then
     echo "  - Setting up Next.js environment..."
     cp packages/nextjs-example/.env.example packages/nextjs-example/.env
 fi
 
-if [ ! -f "packages/vue-example/.env" ]; then
+if [ -f "packages/vue-example/.env.example" ] && [ ! -f "packages/vue-example/.env" ]; then
     echo "  - Setting up Vue environment..."
     cp packages/vue-example/.env.example packages/vue-example/.env
 fi
 
-if [ ! -f "packages/node-example/.env" ]; then
+if [ -f "packages/node-example/.env.example" ] && [ ! -f "packages/node-example/.env" ]; then
     echo "  - Setting up Node.js environment..."
     cp packages/node-example/.env.example packages/node-example/.env
 fi
 
-# Initialize FHEVM configuration
+# Initialize FHEVM configuration (optional)
 echo "🔐 Initializing FHEVM configuration..."
-pnpm fhevm-node:init
+if [ -f "packages/fhevm-sdk/dist/node/src/cli.js" ]; then
+    pnpm fhevm-cli:init || echo "  ⚠️ FHEVM CLI init skipped (optional)"
+else
+    echo "  ⚠️ FHEVM CLI not built yet (will be available after first build)"
+fi
 
 # Deploy contracts to localhost
 echo "⚒️ Deploying contracts to localhost..."
-pnpm hardhat:deploy
-
-# Generate TypeScript ABIs
-echo "📝 Generating TypeScript ABIs..."
-pnpm generate
+pnpm deploy:localhost
 
 # Run tests to verify setup
 echo "🧪 Running tests to verify setup..."

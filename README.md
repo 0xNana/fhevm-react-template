@@ -405,12 +405,6 @@ pnpm vue:dev      # Development server
 pnpm vue:build    # Build for production
 pnpm vue:preview  # Preview production build
 
-# Node.js (Legacy - use demo: commands instead)
-pnpm node:dev     # Development with hot reload
-pnpm node:build   # Build for production
-pnpm node:start   # Start production server
-```
-
 ##  Architecture
 
 ```

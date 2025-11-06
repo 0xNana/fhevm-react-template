@@ -51,7 +51,7 @@ const generatedContractComment = `
 `;
 const DEPLOYMENTS_DIR = "./packages/hardhat/deployments";
 const ARTIFACTS_DIR = "./packages/hardhat/artifacts";
-const TARGET_DIR = "./packages/nextjs/contracts/";
+const TARGET_DIR = "./packages/nextjs-example/contracts/";
 function getDirectories(path) {
     return fs
         .readdirSync(path, { withFileTypes: true })
@@ -116,10 +116,18 @@ function getContractDataFromDeployments() {
             continue;
         }
         const contracts = {};
-        for (const contractName of getContractNames(`${DEPLOYMENTS_DIR}/${chainName}`)) {
-            const { abi, address, metadata, receipt } = JSON.parse(fs.readFileSync(`${DEPLOYMENTS_DIR}/${chainName}/${contractName}.json`).toString());
+        const contractNames = getContractNames(`${DEPLOYMENTS_DIR}/${chainName}`);
+        console.log(`Found ${contractNames.length} contracts in ${chainName}: ${contractNames.join(", ")}`);
+        for (const contractName of contractNames) {
+            const deploymentFile = `${DEPLOYMENTS_DIR}/${chainName}/${contractName}.json`;
+            if (!fs.existsSync(deploymentFile)) {
+                console.warn(`⚠️  Deployment file not found: ${deploymentFile}`);
+                continue;
+            }
+            const { abi, address, metadata, receipt } = JSON.parse(fs.readFileSync(deploymentFile).toString());
             const inheritedFunctions = metadata ? getInheritedFunctions(JSON.parse(metadata).sources, contractName) : {};
             contracts[contractName] = { address, abi, inheritedFunctions, deployedOnBlock: receipt?.blockNumber };
+            console.log(`  ✅ Added ${contractName} at ${address}`);
         }
         output[chainId] = contracts;
     }

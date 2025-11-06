@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "node scripts/build.js",
+    "build:skip-typecheck": "VITE_IGNORE_BUILD_ERROR=true node scripts/build.js",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit"
   },

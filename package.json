@@ -51,6 +51,7 @@
     "next:start": "pnpm --filter ./packages/nextjs-example start",
     "vue:dev": "pnpm --filter ./packages/vue-example dev",
     "vue:build": "pnpm --filter ./packages/vue-example build",
+    "vue:build:skip-typecheck": "VITE_IGNORE_BUILD_ERROR=true pnpm --filter ./packages/vue-example build",
     "vue:preview": "pnpm --filter ./packages/vue-example preview",
     "clean:all": "pnpm sdk:clean",
     "quickstart": "pnpm fhevm-cli:init",

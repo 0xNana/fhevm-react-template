@@ -17,7 +17,6 @@ import {
   shouldUseMockMode
 } from './utilities.js'
 
-// Smart mock detection - will be imported from utilities
 import type { FHEVMConfig } from '../../types.js'
 
 config({ path: '.env.production' })
@@ -46,7 +45,6 @@ program
   .option('-v, --verbose', 'Verbose output')
   .option('--dry-run', 'Show what would be done without executing')
 
-// Load configuration from environment
 const loadConfig = (): FHEVMConfig => {
   const mockMode = shouldUseMockMode()
   
@@ -60,7 +58,6 @@ const loadConfig = (): FHEVMConfig => {
     }
   }
   
-  // Only use real blockchain if explicitly configured
   const rpcUrl = process.env.RPC_URL || process.env.MOCK_RPC_URL || 'http://localhost:8545'
   const chainId = parseInt(process.env.CHAIN_ID || process.env.MOCK_CHAIN_ID || '31337')
   
@@ -73,14 +70,10 @@ const loadConfig = (): FHEVMConfig => {
   }
 }
 
-// Mock mode detection is now imported from utilities
-
-// Interactive setup command (like create-next-app)
 program
   .command('init')
   .description('Interactive FHEVM setup and testing experience')
   .action(async () => {
-    // Clear screen and show header
     console.clear()
     console.log(chalk.blue.bold('\n🚀 FHEVM SDK Interactive Setup'))
     console.log(chalk.gray('═'.repeat(50)))
@@ -90,7 +83,6 @@ program
     console.log()
     
     try {
-      // Step 1: Choose setup mode
       const { setupMode } = await inquirer.prompt([
         {
           type: 'list',
@@ -117,7 +109,6 @@ program
         }
       ])
       
-      // Step 2: Choose action
       const { action } = await inquirer.prompt([
         {
           type: 'list',
@@ -150,7 +141,6 @@ program
         return
       }
       
-      // Step 3: Configure based on mode
       let config: FHEVMConfig
       let mockMode = false
       
@@ -184,7 +174,6 @@ program
         }
         console.log(chalk.green('✅ Sepolia testnet configured'))
       } else {
-        // Custom configuration
         console.log()
         console.log(chalk.blue('⚙️  Custom Configuration'))
         console.log(chalk.gray('Set up your own network configuration'))
@@ -212,7 +201,6 @@ program
         console.log(chalk.green('✅ Custom configuration set'))
       }
       
-      // Step 4: Save configuration
       if (action === 'setup' || action === 'test') {
         const envContent = `# FHEVM Configuration
 RPC_URL=${config.rpcUrl}
@@ -223,7 +211,6 @@ ${mockMode ? 'FHEVM_MOCK_MODE=true' : ''}
         console.log(chalk.green('✅ Configuration saved to .env'))
       }
       
-      // Step 5: Interactive test
       if (action === 'test') {
         console.log()
         console.log(chalk.blue.bold('🧪 FHEVM Encryption & Decryption Test'))
@@ -249,7 +236,6 @@ ${mockMode ? 'FHEVM_MOCK_MODE=true' : ''}
         const spinner = ora('Testing FHEVM operations...').start()
         
         try {
-          // Test encryption
           spinner.text = 'Encrypting value...'
           const encrypted = await encryptValue(testValue, publicKey, config)
           
@@ -286,7 +272,6 @@ ${mockMode ? 'FHEVM_MOCK_MODE=true' : ''}
         }
       }
       
-      // Step 6: Show next steps
       console.log()
       console.log(chalk.green.bold('🚀 Setup Complete!'))
       console.log()
@@ -312,7 +297,6 @@ ${mockMode ? 'FHEVM_MOCK_MODE=true' : ''}
     }
   })
 
-// Encrypt command
 program
   .command('encrypt')
   .description('Encrypt a value using FHEVM')
@@ -351,7 +335,6 @@ program
     }
   })
 
-// Decrypt command
 program
   .command('decrypt')
   .description('Decrypt a handle using FHEVM')
@@ -384,7 +367,6 @@ program
     }
   })
 
-// Batch encrypt command
 program
   .command('batch-encrypt')
   .description('Encrypt multiple values efficiently')
@@ -411,7 +393,6 @@ program
     }
   })
 
-// Batch decrypt command
 program
   .command('batch-decrypt')
   .description('Decrypt multiple handles efficiently')
@@ -448,7 +429,6 @@ program
     }
   })
 
-// User decrypt with signature command
 program
   .command('user-decrypt')
   .description('Decrypt a handle using user signature (EIP-712)')
@@ -477,7 +457,6 @@ program
     }
   })
 
-// Public decrypt command
 program
   .command('public-decrypt')
   .description('Decrypt a handle using public decryption (no signature required)')
@@ -504,7 +483,6 @@ program
     }
   })
 
-// Status command
 program
   .command('status')
   .description('Check FHEVM connection and configuration status')
@@ -519,7 +497,6 @@ program
       console.log(chalk.blue('\n📊 FHEVM Node.js Status'))
       console.log(chalk.gray('─'.repeat(50)))
       
-      // Check configuration
       const mockMode = shouldUseMockMode(config)
       console.log(chalk.green('✅ Configuration:'), 'Valid')
       console.log(chalk.blue('   RPC URL:'), config.rpcUrl)
@@ -545,8 +522,7 @@ program
         console.log(chalk.gray('   NODE_ENV:'), process.env.NODE_ENV || 'Not set')
         console.log(chalk.gray('   Auto-detected:'), shouldUseMockMode(config) ? chalk.green('Yes') : chalk.red('No'))
       }
-      
-      // Test FHEVM client
+
       spinner.text = 'Testing FHEVM client...'
       try {
         createFHEVMClientForNode(config)
@@ -564,7 +540,6 @@ program
     }
   })
 
-// Test command
 program
   .command('test')
   .description('Test FHEVM connection and basic operations')
@@ -580,14 +555,12 @@ program
         console.log(chalk.gray('─'.repeat(50)))
       }
       
-      // Test 1: Configuration validation
       spinner.text = 'Testing configuration...'
       if (!config.rpcUrl || config.rpcUrl.includes('YOUR_INFURA_KEY')) {
         throw new Error('Missing required configuration (RPC_URL)')
       }
       if (!options.quiet) console.log(chalk.green('✅ Configuration:'), 'Valid')
       
-      // Test 2: FHEVM client creation
       spinner.text = 'Testing FHEVM client...'
       try {
         createFHEVMClientForNode(config)
@@ -609,7 +582,6 @@ program
     }
   })
 
-// Info command
 program
   .command('info')
   .description('Show detailed information about the FHEVM Node.js CLI')
@@ -645,32 +617,35 @@ program
     
     console.log(chalk.blue('\n🌐 Learn more: https://github.com/zama-ai/fhevm'))
   })
-
-// Error handling
 program.configureHelp({
   sortSubcommands: true,
   subcommandTerm: (cmd) => cmd.name()
 })
 
-// Only execute CLI when run directly, not when imported
 if (process.argv[1] && process.argv[1].endsWith('cli.js')) {
-  // Parse arguments
+  if (!process.argv.slice(2).length) {
+    program.outputHelp()
+    process.exit(0)
+  }
+
   try {
     await program.parseAsync()
   } catch (error) {
-    // Don't show error for help commands
-    if (error instanceof Error && error.message.includes('outputHelp')) {
+    if (error instanceof Error && (
+      error.message.includes('outputHelp') ||
+      error.message.includes('help') ||
+      process.argv.includes('--help') ||
+      process.argv.includes('-h')
+    )) {
+      process.exit(0)
+    }
+    if (error instanceof Error && error.message.includes('command')) {
+      program.outputHelp()
       process.exit(0)
     }
     console.error(chalk.red('Error:'), error instanceof Error ? error.message : String(error))
     process.exit(1)
   }
-
-  // Show help if no command provided
-  if (!process.argv.slice(2).length) {
-    program.outputHelp()
-  }
 }
 
-// Default export for the CLI program
 export default program

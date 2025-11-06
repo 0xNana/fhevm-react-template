@@ -1,9 +1,12 @@
 /**
  * DON'T MODIFY OR DELETE THIS SCRIPT (unless you know what you're doing)
  *
- * This script generates the file containing the contracts Abi definitions.
+ * This script generates the file containing the contracts ABI definitions.
  * These definitions are used to derive the types needed in the custom fhevm hooks, for example.
- * This script should run as the last deploy script.
+ * 
+ * This script reads from compiled contract artifacts (artifacts directory).
+ * If deployments exist, it will merge deployment addresses; otherwise placeholder addresses are used.
+ * This allows generating types even before contracts are deployed.
  */
 
 import * as fs from "fs";
@@ -19,7 +22,12 @@ const generatedContractComment = `
 
 const DEPLOYMENTS_DIR = "./packages/hardhat/deployments";
 const ARTIFACTS_DIR = "./packages/hardhat/artifacts";
-const TARGET_DIR = "./packages/nextjs/contracts/";
+const CONTRACTS_ARTIFACTS_DIR = "./packages/hardhat/artifacts/contracts";
+const TARGET_DIRS = [
+  "./packages/nextjs-example/contracts/",
+  "./packages/vue-example/src/contracts/",
+  "./packages/node-example/src/contracts/"
+];
 
 function getDirectories(path: string) {
   return fs
@@ -76,61 +84,192 @@ function getInheritedFunctions(sources: Record<string, any>, contractName: strin
   return inheritedFunctions;
 }
 
-function getContractDataFromDeployments() {
-  if (!fs.existsSync(DEPLOYMENTS_DIR)) {
-    throw Error("At least one other deployment script should exist to generate an actual contract.");
+function getAllContractArtifacts() {
+  if (!fs.existsSync(CONTRACTS_ARTIFACTS_DIR)) {
+    throw Error("Contracts artifacts directory not found. Please compile contracts first using 'pnpm hardhat:compile'");
   }
-  const output = {} as Record<string, any>;
-  const chainDirectories = getDirectories(DEPLOYMENTS_DIR);
-  for (const chainName of chainDirectories) {
-    let chainId;
-    try {
-      chainId = fs.readFileSync(`${DEPLOYMENTS_DIR}/${chainName}/.chainId`).toString();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      console.log(`No chainId file found for ${chainName}`);
-      continue;
+  
+  const contracts = {} as Record<string, any>;
+  const contractDirectories = getDirectories(CONTRACTS_ARTIFACTS_DIR);
+  
+  console.log(`📋 Scanning artifacts in ${CONTRACTS_ARTIFACTS_DIR}...`);
+  
+  for (const contractDir of contractDirectories) {
+    const contractPath = `${CONTRACTS_ARTIFACTS_DIR}/${contractDir}`;
+    const contractFiles = fs.readdirSync(contractPath, { withFileTypes: true })
+      .filter(dirent => dirent.isFile() && dirent.name.endsWith(".json") && !dirent.name.endsWith(".dbg.json"))
+      .map(dirent => dirent.name);
+    
+    for (const contractFile of contractFiles) {
+      const contractName = contractFile.split(".")[0];
+      const artifactPath = `${contractPath}/${contractFile}`;
+      
+      try {
+        const artifact = JSON.parse(fs.readFileSync(artifactPath).toString());
+        if (artifact.abi && Array.isArray(artifact.abi) && artifact.abi.length > 0) {
+          // Only include main contract files (not library or interface files)
+          if (!contracts[contractName] || contractFile === `${contractName}.json`) {
+            contracts[contractName] = {
+              abi: artifact.abi,
+              bytecode: artifact.bytecode,
+              metadata: artifact.metadata
+            };
+            console.log(`  ✅ Found ${contractName} in artifacts`);
+          }
+        }
+      } catch (error) {
+        console.warn(`⚠️  Failed to read artifact: ${artifactPath}`);
+      }
     }
+  }
+  
+  console.log(`📋 Found ${Object.keys(contracts).length} contracts: ${Object.keys(contracts).join(", ")}`);
+  return contracts;
+}
 
-    const contracts = {} as Record<string, any>;
-    for (const contractName of getContractNames(`${DEPLOYMENTS_DIR}/${chainName}`)) {
-      const { abi, address, metadata, receipt } = JSON.parse(
-        fs.readFileSync(`${DEPLOYMENTS_DIR}/${chainName}/${contractName}.json`).toString(),
-      );
-      const inheritedFunctions = metadata ? getInheritedFunctions(JSON.parse(metadata).sources, contractName) : {};
-      contracts[contractName] = { address, abi, inheritedFunctions, deployedOnBlock: receipt?.blockNumber };
+function getContractDataFromArtifacts() {
+  const artifacts = getAllContractArtifacts();
+  const output = {} as Record<string, any>;
+  
+  // Default chain IDs to include (can be extended)
+  const defaultChainIds = ["31337", "11155111"]; // hardhat, sepolia
+  
+  // Check if deployments exist and get chain IDs from there
+  let chainIds: string[] = [];
+  if (fs.existsSync(DEPLOYMENTS_DIR)) {
+    const chainDirectories = getDirectories(DEPLOYMENTS_DIR);
+    for (const chainName of chainDirectories) {
+      try {
+        const chainId = fs.readFileSync(`${DEPLOYMENTS_DIR}/${chainName}/.chainId`).toString().trim();
+        if (chainId && !chainIds.includes(chainId)) {
+          chainIds.push(chainId);
+        }
+      } catch (error) {
+        // Ignore if chainId file doesn't exist
+      }
     }
-    output[chainId] = contracts;
   }
+  
+  // Use deployment chain IDs if available, otherwise use defaults
+  if (chainIds.length === 0) {
+    chainIds = defaultChainIds;
+    console.log("📋 No deployments found, using default chain IDs:", chainIds.join(", "));
+  } else {
+    console.log("📋 Found deployments for chain IDs:", chainIds.join(", "));
+  }
+  
+  // Generate contract data for each chain ID
+  for (const chainId of chainIds) {
+    const contracts = {} as Record<string, any>;
+    
+    for (const [contractName, artifactData] of Object.entries(artifacts)) {
+      // Try to get deployment info if it exists
+      let address = "0x0000000000000000000000000000000000000000";
+      let deployedOnBlock: number | undefined;
+      
+      if (fs.existsSync(DEPLOYMENTS_DIR)) {
+        // Try to find deployment for this chain
+        const chainDirectories = getDirectories(DEPLOYMENTS_DIR);
+        for (const chainName of chainDirectories) {
+          try {
+            const deploymentChainId = fs.readFileSync(`${DEPLOYMENTS_DIR}/${chainName}/.chainId`).toString().trim();
+            if (deploymentChainId === chainId) {
+              const deploymentFile = `${DEPLOYMENTS_DIR}/${chainName}/${contractName}.json`;
+              if (fs.existsSync(deploymentFile)) {
+                const deployment = JSON.parse(fs.readFileSync(deploymentFile).toString());
+                address = deployment.address || address;
+                deployedOnBlock = deployment.receipt?.blockNumber;
+                break;
+              }
+            }
+          } catch (error) {
+            // Ignore errors
+          }
+        }
+      }
+      
+      // Get inherited functions if metadata exists
+      let inheritedFunctions = {};
+      if (artifactData.metadata) {
+        try {
+          const metadata = JSON.parse(artifactData.metadata);
+          if (metadata.sources) {
+            inheritedFunctions = getInheritedFunctions(metadata.sources, contractName);
+          }
+        } catch (error) {
+          // Ignore metadata parsing errors
+        }
+      }
+      
+      contracts[contractName] = {
+        address,
+        abi: artifactData.abi,
+        inheritedFunctions,
+        deployedOnBlock
+      };
+    }
+    
+    if (Object.keys(contracts).length > 0) {
+      output[chainId] = contracts;
+      console.log(`📋 Generated data for chain ${chainId} with ${Object.keys(contracts).length} contracts`);
+    }
+  }
+  
   return output;
 }
 
 /**
- * Generates the TypeScript contract definition file based on the json output of the contract deployment scripts
- * This script should be run last.
+ * Generates TypeScript contract definition files based on compiled contract artifacts
+ * This script reads from artifacts directory and optionally merges deployment addresses if available
+ * Generates separate files for each contract (e.g., FHECounter.ts, FHEVoting.ts, FHEBank.ts)
  */
 const generateTsAbis = async function () {
-  const allContractsData = getContractDataFromDeployments();
+  const allContractsData = getContractDataFromArtifacts();
 
-  const fileContent = Object.entries(allContractsData).reduce((content, [chainId, chainConfig]) => {
-    return `${content}${parseInt(chainId).toFixed(0)}:${JSON.stringify(chainConfig, null, 2)},`;
-  }, "");
-
-  if (!fs.existsSync(TARGET_DIR)) {
-    fs.mkdirSync(TARGET_DIR);
+  // Get all unique contract names across all chains
+  const contractNames = new Set<string>();
+  for (const chainData of Object.values(allContractsData)) {
+    for (const contractName of Object.keys(chainData as Record<string, any>)) {
+      contractNames.add(contractName);
+    }
   }
-  fs.writeFileSync(
-    `${TARGET_DIR}deployedContracts.ts`,
-    await prettier.format(
-      `${generatedContractComment} import { GenericContractsDeclaration } from "~~/utils/helper/contract"; \n\n
- const deployedContracts = {${fileContent}} as const; \n\n export default deployedContracts satisfies GenericContractsDeclaration`,
+
+  // Generate a separate file for each contract
+  for (const contractName of contractNames) {
+    // Build contract data across all chains
+    const contractData: Record<string, any> = {};
+    for (const [chainId, chainConfig] of Object.entries(allContractsData)) {
+      const contracts = chainConfig as Record<string, any>;
+      if (contracts[contractName]) {
+        contractData[chainId] = contracts[contractName];
+      }
+    }
+
+    const fileContent = Object.entries(contractData).reduce((content, [chainId, contractConfig]) => {
+      return `${content}${parseInt(chainId).toFixed(0)}:${JSON.stringify(contractConfig, null, 2)},`;
+    }, "");
+
+    const fileContentFormatted = await prettier.format(
+      `${generatedContractComment}
+const ${contractName} = {${fileContent}} as const;
+
+export default ${contractName};`,
       {
         parser: "typescript",
       },
-    ),
-  );
+    );
 
-  console.log(`📝 Updated TypeScript contract definition file on ${TARGET_DIR}deployedContracts.ts`);
+    // Write to all target directories
+    for (const targetDir of TARGET_DIRS) {
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+      fs.writeFileSync(`${targetDir}${contractName}.ts`, fileContentFormatted);
+      console.log(`📝 Generated ${contractName}.ts: ${targetDir}${contractName}.ts`);
+    }
+  }
+
+  console.log(`\n✅ Generated ${contractNames.size} contract files: ${Array.from(contractNames).join(", ")}`);
 };
 
 export default generateTsAbis;
