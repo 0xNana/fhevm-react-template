@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd ../.. && pnpm install && pnpm sdk:build && cd packages/vue-example && pnpm build",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
+

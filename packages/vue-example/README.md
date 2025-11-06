@@ -2,7 +2,7 @@
 
 This Vue 3 application demonstrates the FHEVM SDK with modern Vue patterns and Composition API.
 
-## 🚀 Features
+##  Features
 
 ### **Vue 3 + Composition API**
 - **Modern Vue Patterns**: Composition API, reactive refs, computed properties
@@ -21,7 +21,7 @@ This Vue 3 application demonstrates the FHEVM SDK with modern Vue patterns and C
 - **Error Handling**: Comprehensive error states and messages
 - **Wallet Integration**: wagmi integration for wallet connection
 
-## 🏗️ Architecture
+##  Architecture
 
 ### **Vue Composables**
 ```typescript
@@ -76,7 +76,7 @@ const pinia = createPinia()
 app.use(pinia)
 ```
 
-## 📦 Dependencies
+##  Dependencies
 
 ### **Core Dependencies**
 - `@fhevm/sdk` - Universal FHEVM SDK
@@ -95,7 +95,7 @@ app.use(pinia)
 - `viem` - Ethereum library
 - `@rainbow-me/rainbowkit` - Wallet connection
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### **1. Install Dependencies**
 ```bash
@@ -122,7 +122,7 @@ pnpm dev
 ### **4. Open Application**
 Navigate to [http://localhost:3001](http://localhost:3001)
 
-## 🎯 Demo Features
+##  Demo Features
 
 ### **Enhanced Counter Demo**
 - **Increment/Decrement**: Encrypted counter operations
@@ -142,7 +142,7 @@ Navigate to [http://localhost:3001](http://localhost:3001)
 - **View Results**: Decrypt encrypted voting results
 - **Session Management**: End and monitor sessions
 
-## 🔧 Configuration
+##  Configuration
 
 ### **Environment Variables**
 ```bash
@@ -159,7 +159,7 @@ VITE_INFURA_API_KEY=your_infura_key
 - **Testnet**: Sepolia (Chain ID: 11155111)
 - **Mock Chains**: Localhost for development
 
-## 📱 User Interface
+##  User Interface
 
 ### **Navigation**
 - **Router-based Navigation**: Clean URL routing
@@ -176,34 +176,34 @@ VITE_INFURA_API_KEY=your_infura_key
 - **Loading States**: Visual feedback during operations
 - **Results Display**: Clear output formatting
 
-## 🏆 Bounty Requirements
+##  Bounty Requirements
 
-### **✅ Framework Agnostic**
+### ** Framework Agnostic**
 - Core SDK works in React, Vue, and Node.js
 - Vue-specific composables for native Vue experience
 - Clean separation of concerns
 
-### **✅ Wagmi-like Structure**
+### ** Wagmi-like Structure**
 - Familiar composable patterns
 - Intuitive API design
 - TypeScript-first approach
 
-### **✅ Quick Setup**
+### ** Quick Setup**
 - <10 lines of code to get started
 - Zero-config defaults
 - Comprehensive documentation
 
-### **✅ Full FHEVM Flow**
+### ** Full FHEVM Flow**
 - Initialize, encrypt, decrypt operations
 - Contract interactions
 - Error handling and edge cases
 
-### **✅ Multiple Examples**
+### ** Multiple Examples**
 - Three comprehensive demos
 - Real-world use cases
 - Production-ready implementation
 
-## 🚀 Deployment
+##  Deployment
 
 ### **Vite Build**
 ```bash
@@ -215,14 +215,44 @@ pnpm preview
 ```
 
 ### **Deployment Options**
-- **Netlify**: Drag and drop `dist` folder
-- **Vercel**: Connect GitHub repository
-- **GitHub Pages**: Deploy from GitHub Actions
+
+#### **Netlify**
+- Drag and drop `dist` folder or connect GitHub repository
+- The `public/_redirects` file is automatically copied to `dist/_redirects` during build
+- This ensures Vue Router routes work correctly (no 404 errors)
+
+#### **Vercel**
+- Connect GitHub repository
+- The `vercel.json` file automatically:
+  - Builds the SDK before building the Vue app
+  - Configures rewrites for Vue Router (all routes → `/index.html`)
+  - Sets the output directory to `dist`
+- Routes like `/counter`, `/bank`, `/voting` will work correctly
+
+#### **Apache Server**
+- Deploy `dist` folder to your Apache server
+- The `public/.htaccess` file is automatically copied to `dist/.htaccess` during build
+- Ensure `mod_rewrite` is enabled on your Apache server
+
+#### **Nginx**
+- Use the provided `nginx.conf` as a reference
+- Configure your nginx server block with the `try_files` directive
+- See `nginx.conf` in the project root for the configuration
 
 ### **Environment Setup**
 1. Set `VITE_ALCHEMY_API_KEY`
 2. Update contract addresses in configuration
 3. Configure RPC URLs for production
+
+### **Important: Routing Configuration**
+
+For Vue Router to work correctly in production, you need to configure your server to serve `index.html` for all routes. This prevents 404 errors when navigating directly to routes like `/counter`, `/bank`, or `/voting`.
+
+**Files included for different hosting providers:**
+- `public/_redirects` - For Netlify (automatically copied to `dist/`)
+- `vercel.json` - For Vercel (in project root)
+- `public/.htaccess` - For Apache (automatically copied to `dist/`)
+- `nginx.conf` - Reference configuration for Nginx
 
 ## 📚 Documentation
 
