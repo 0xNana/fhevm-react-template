@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
-import { FHEVMProvider, useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage } from "@fhevm/sdk/react";
+import { FHEVMProvider, useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage, logger } from "@fhevm/sdk/react";
 import { useReadContract, useWriteContract } from "wagmi";
 import { getContractConfig } from "~~/contracts";
 import { ethers } from "ethers";
@@ -50,13 +50,9 @@ function CounterDemoContent() {
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = new ethers.JsonRpcSigner(provider, address);
       
-      // Log signer methods for debugging
-      console.log('🔍 ethersSigner Methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(signer)));
-      console.log('🔍 ethersSigner has signTypedData:', typeof signer.signTypedData === 'function');
-      
       return signer;
     } catch (error) {
-      console.error('Failed to create ethers signer:', error);
+      logger.error('Failed to create ethers signer', error);
       return undefined;
     }
   }, [isConnected, address]);
@@ -78,9 +74,7 @@ function CounterDemoContent() {
   // Decryption requests for signature-based decryption
   const requests = useMemo(() => {
     if (!counterConfig.address || !countHandle || countHandle === "0x0000000000000000000000000000000000000000000000000000000000000000") return undefined;
-    const request = [{ handle: countHandle.toString(), contractAddress: counterConfig.address as `0x${string}` }] as const;
-    console.log("🔍 Requests updated:", request);
-    return request;
+    return [{ handle: countHandle.toString(), contractAddress: counterConfig.address as `0x${string}` }] as const;
   }, [counterConfig.address, countHandle]);
   
   // FHEVM Decryption using signature-based approach
@@ -104,17 +98,9 @@ function CounterDemoContent() {
   const [message, setMessage] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Debug: Log current state for debugging
-  console.log("🔍 Current state:", {
-    countHandle,
-    resultsKeys: Object.keys(results),
-    currentDecryptedValue: countHandle ? results?.[countHandle.toString()] : null
-  });
-
   // Clear old results when handle changes (potential fix for handle mismatch)
   const [lastHandle, setLastHandle] = useState<string | null>(null);
   if (countHandle && countHandle.toString() !== lastHandle) {
-    console.log("🔍 Handle changed, clearing old results");
     setLastHandle(countHandle.toString());
     // Note: We can't directly clear results here as it's managed by the hook
     // But this helps us track when the handle changes
@@ -134,12 +120,10 @@ function CounterDemoContent() {
 
     setIsProcessing(true);
     setMessage("Incrementing counter...");
-    console.log("🔍 Starting increment with:", { instance: !!instance, address, contract: counterConfig.address, isConnected });
 
     try {
       // Create encrypted input using FHEVM pattern (no signature needed for writes)
       setMessage("Creating encrypted input...");
-      console.log("🔍 Creating encrypted input with address:", address);
       const input = instance.createEncryptedInput(counterConfig.address, address);
       input.add32(1); // Increment by 1
       const encryptedResult = await input.encrypt();
@@ -164,13 +148,6 @@ function CounterDemoContent() {
       
       // Call the contract (wallet will sign the transaction)
       setMessage("Calling contract...");
-      console.log("🔍 About to call increment with:", {
-        address: counterConfig.address,
-        functionName: 'increment',
-        args: [externalEuint32, inputProof],
-        externalEuint32: externalEuint32.slice(0, 20) + '...',
-        inputProof: inputProof.slice(0, 20) + '...'
-      });
       
        await writeCounter({
          address: counterConfig.address as `0x${string}`,
@@ -189,11 +166,7 @@ function CounterDemoContent() {
       setMessage("✅ Increment completed! Refreshing count...");
       
       // Refetch the count handle after successful transaction
-      console.log("🔍 Handle before refetch:", countHandle);
-      const refetchResult = await refetchCount();
-      console.log("🔍 Refetch result:", refetchResult);
-      console.log("🔍 Handle after increment:", countHandle);
-      console.log("🔍 Current results:", results);
+      await refetchCount();
     } catch (error) {
       setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -214,12 +187,10 @@ function CounterDemoContent() {
 
     setIsProcessing(true);
     setMessage("Decrementing counter...");
-    console.log("🔍 Starting decrement with:", { instance: !!instance, address, contract: counterConfig.address, isConnected });
 
     try {
       // Create encrypted input using FHEVM pattern
       setMessage("Creating encrypted input...");
-      console.log("🔍 Creating encrypted input with address:", address);
       const input = instance.createEncryptedInput(counterConfig.address, address);
       input.add32(1); 
       const encryptedResult = await input.encrypt();
@@ -244,13 +215,6 @@ function CounterDemoContent() {
       
       // Call the contract (wallet will sign the transaction)
       setMessage("Calling contract...");
-      console.log("🔍 About to call decrement with:", {
-        address: counterConfig.address,
-        functionName: 'decrement',
-        args: [externalEuint32, inputProof],
-        externalEuint32: externalEuint32.slice(0, 20) + '...',
-        inputProof: inputProof.slice(0, 20) + '...'
-      });
       
        await writeCounter({
          address: counterConfig.address as `0x${string}`,
@@ -269,11 +233,7 @@ function CounterDemoContent() {
       setMessage("✅ Decrement completed! Refreshing count...");
       
       // Refetch the count handle after successful transaction
-      console.log("🔍 Handle before refetch:", countHandle);
-      const refetchResult = await refetchCount();
-      console.log("🔍 Refetch result:", refetchResult);
-      console.log("🔍 Handle after decrement:", countHandle);
-      console.log("🔍 Current results:", results);
+      await refetchCount();
     } catch (error) {
       setMessage(`Error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -296,19 +256,11 @@ function CounterDemoContent() {
     setMessage("Decrypting count...");
 
     try {
-      console.log("🔍 Starting signature-based decryption...");
-      console.log("🔍 Handle:", countHandle);
-      console.log("🔍 Contract address:", counterConfig.address);
-      console.log("🔍 Current user address:", address);
-      console.log("🔍 Current results before decryption:", results);
-      
       // Use the signature-based decryption
       await performDecrypt();
       
       // Wait a moment for results to be processed
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      console.log("🔍 Results after decryption:", results);
       
       // Extract the decrypted value from results
       const handleKey = countHandle.toString();
@@ -431,12 +383,6 @@ function CounterDemoContent() {
             {(() => {
               const currentHandle = countHandle?.toString();
               const decryptedValue = currentHandle ? results?.[currentHandle] : null;
-              console.log("🔍 UI Display Debug:", {
-                currentHandle,
-                decryptedValue,
-                allResults: results,
-                allHandles: Object.keys(results)
-              });
               return decryptedValue ? decryptedValue : '🔒';
             })()}
           </div>

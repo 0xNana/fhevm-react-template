@@ -277,7 +277,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage } from '@fhevm/sdk/vue'
+import { useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage, logger } from '@fhevm/sdk/vue'
 import { useWallet } from '@/composables/useWallet'
 import { getContractConfig } from '@/contracts'
 import { useReadContract, useWriteContract } from '@wagmi/vue'
@@ -295,13 +295,9 @@ const ethersSigner = computed(() => {
     const provider = new ethers.BrowserProvider((window as any).ethereum)
     const signer = new ethers.JsonRpcSigner(provider, address.value)
     
-    // Log signer methods for debugging
-    console.log('🔍 Bank ethersSigner Methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(signer)))
-    console.log('🔍 Bank ethersSigner has signTypedData:', typeof signer.signTypedData === 'function')
-    
     return signer
   } catch (error) {
-    console.error('Failed to create ethers signer:', error)
+    logger.error('Failed to create ethers signer', error)
     return undefined
   }
 })
@@ -318,10 +314,7 @@ const fhevmConfig = {
   }
 }
 
-// Add debugging for Relayer SDK loading
-console.log("🔍 Bank FHEVM Config:", fhevmConfig)
-console.log("🔍 Bank Window object:", typeof window !== 'undefined' ? 'available' : 'undefined')
-console.log("🔍 Bank RelayerSDK in window:", typeof window !== 'undefined' && 'relayerSDK' in window ? 'available' : 'not available')
+// Debug info available via logger.debug if needed
 
 // FHEVM
 const { 
@@ -356,7 +349,7 @@ const balanceHandle = ref<string | null>(null)
 
 // Use useReadContract but only when we explicitly want to fetch
 const { data: fetchedBalance, refetch: refetchBalance, error: fetchError } = useReadContract({
-  address: bankConfig.address,
+  address: bankConfig.address as `0x${string}`  ,
   abi: bankConfig.abi as any,
   functionName: 'getEncryptedBalance',
   args: [address.value!],
@@ -366,51 +359,30 @@ const { data: fetchedBalance, refetch: refetchBalance, error: fetchError } = use
   },
 })
 
-// Debug the useReadContract state
-watch([fetchedBalance, fetchError], () => {
-  console.log("🔍 Bank useReadContract state:", {
-    balance: fetchedBalance.value,
-    error: fetchError.value,
-    address: bankConfig.address,
-    userAddress: address.value
-  })
-})
-
 // Watch for changes in fetchedBalance and update balanceHandle
 watch(fetchedBalance, (newBalance) => {
-  console.log("🔍 Bank fetchedBalance watcher triggered:", newBalance)
   if (newBalance) {
     balanceHandle.value = newBalance as string
-    console.log("🔍 Bank Fetched balance:", newBalance)
   }
 })
 
 // Watch for fetch errors
 watch(fetchError, (error) => {
   if (error) {
-    console.error("🔍 Bank Fetch error:", error)
+    logger.error("Bank Fetch error", error)
   }
 })
 
 // Manual function to fetch the balance - ONLY after user operations
 const fetchBalanceHandle = async () => {
-  console.log("🔍 Bank fetchBalanceHandle called")
-  console.log("🔍 Bank bankConfig.address:", bankConfig.address)
-  console.log("🔍 Bank isFHEVMConnected.value:", isFHEVMConnected.value)
-  console.log("🔍 Bank address.value:", address.value)
-  
   if (!bankConfig.address || !isFHEVMConnected.value || !address.value) {
-    console.log("🔍 Bank Missing requirements for fetchBalanceHandle")
     return
   }
   
   try {
-    console.log("🔍 Bank Calling refetchBalance directly...")
-    const result = await refetchBalance()
-    console.log("🔍 Bank refetchBalance result:", result)
-    console.log("🔍 Bank refetchBalance completed")
+    await refetchBalance()
   } catch (error) {
-    console.error("Failed to fetch balance handle:", error)
+    logger.error("Failed to fetch balance handle", error)
   }
 }
 
@@ -464,7 +436,7 @@ const resetDecryptionState = () => {
 
 // Debug dependencies - watch for changes
 watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
-  console.log('🔍 Bank Dependencies check:', {
+  logger.debug('Bank Dependencies check', {
     instance: !!state.value.instance,
     ethersSigner: !!ethersSigner.value,
     ethersSignerType: typeof ethersSigner.value,
@@ -494,35 +466,22 @@ const recipient = ref<string>("")
 
 // Extract decrypted value from results
 const decryptedValue = computed(() => {
-  console.log("🔍 Bank decryptedValue computed - checking...")
-  console.log("🔍 Bank balanceHandle.value:", balanceHandle.value)
-  console.log("🔍 Bank results.value:", results.value)
-  
   if (!balanceHandle.value) {
-    console.log("🔍 Bank No balanceHandle, returning null")
     return null
   }
   
   if (balanceHandle.value === ethers.ZeroHash) {
-    console.log("🔍 Bank balanceHandle is ZeroHash, returning 0")
     return 0
   }
   
   const handleKey = balanceHandle.value.toString()
-  console.log("🔍 Bank Handle key:", handleKey)
-  
   const clear = results.value?.[handleKey]
-  console.log("🔍 Bank Clear value from results:", clear)
-  console.log("🔍 Bank Clear type:", typeof clear)
   
   if (typeof clear === "undefined") {
-    console.log("🔍 Bank Clear is undefined, returning null")
     return null
   }
   
-  const numberValue = Number(clear)
-  console.log("🔍 Bank Converted to number:", numberValue)
-  return numberValue
+  return Number(clear)
 })
 
 const isDecrypted = computed(() => {
@@ -565,9 +524,6 @@ const handleDeposit = async () => {
       input.add64(parseInt(amount.value)) // Deposit amount (64-bit for FHEBank)
       const encryptedResult = await input.encrypt()
       
-      console.log("🔍 Bank Encryption result:", encryptedResult)
-      console.log("🔍 Bank Handles:", encryptedResult.handles)
-      console.log("🔍 Bank InputProof:", encryptedResult.inputProof)
       
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
         throw new Error("Encryption failed - no handle returned")
@@ -591,11 +547,9 @@ const handleDeposit = async () => {
       externalEuint64 = toHex(encryptedResult.handles[0])
       inputProof = toHex(encryptedResult.inputProof)
       
-      console.log("🔍 Bank ExternalEuint64:", externalEuint64)
-      console.log("🔍 Bank InputProof:", inputProof)
       
     } catch (encryptError) {
-      console.error("❌ Bank Encryption error:", encryptError)
+      logger.error("Bank Encryption error", encryptError)
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
@@ -620,19 +574,16 @@ const handleDeposit = async () => {
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Deposit completed! Refreshing balance..."
-      console.log("🔍 Bank Transaction result:", txResult)
-      
       // Now fetch the balance after the transaction is confirmed
       await fetchBalanceHandle()
-      console.log("🔍 Bank Balance after deposit:", balanceHandle.value)
       
     } catch (txError) {
-      console.error("Bank Transaction error:", txError)
+      logger.error("Bank Transaction error", txError)
       throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
     }
   } catch (error) {
     message.value = `❌ Deposit failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Bank Deposit error:", error)
+    logger.error("Bank Deposit error", error)
   } finally {
     isProcessing.value = false
   }
@@ -666,9 +617,6 @@ const handleWithdraw = async () => {
       input.add64(parseInt(amount.value)) // Withdraw amount (64-bit for FHEBank)
       const encryptedResult = await input.encrypt()
       
-      console.log("🔍 Bank Encryption result:", encryptedResult)
-      console.log("🔍 Bank Handles:", encryptedResult.handles)
-      console.log("🔍 Bank InputProof:", encryptedResult.inputProof)
       
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
         throw new Error("Encryption failed - no handle returned")
@@ -692,11 +640,9 @@ const handleWithdraw = async () => {
       externalEuint64 = toHex(encryptedResult.handles[0])
       inputProof = toHex(encryptedResult.inputProof)
       
-      console.log("🔍 Bank ExternalEuint64:", externalEuint64)
-      console.log("🔍 Bank InputProof:", inputProof)
       
     } catch (encryptError) {
-      console.error("❌ Bank Encryption error:", encryptError)
+      logger.error("Bank Encryption error", encryptError)
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
@@ -721,19 +667,17 @@ const handleWithdraw = async () => {
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Withdrawal completed! Refreshing balance..."
-      console.log("🔍 Bank Transaction result:", txResult)
       
       // Now fetch the balance after the transaction is confirmed
       await fetchBalanceHandle()
-      console.log("🔍 Bank Balance after withdrawal:", balanceHandle.value)
       
     } catch (txError) {
-      console.error("Bank Transaction error:", txError)
+      logger.error("Bank Transaction error", txError)
       throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
     }
   } catch (error) {
     message.value = `❌ Withdrawal failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Bank Withdrawal error:", error)
+    logger.error("Bank Withdrawal error", error)
   } finally {
     isProcessing.value = false
   }
@@ -778,9 +722,6 @@ const handleTransfer = async () => {
       input.add64(parseInt(amount.value)) // Transfer amount (64-bit for FHEBank)
       const encryptedResult = await input.encrypt()
       
-      console.log("🔍 Bank Encryption result:", encryptedResult)
-      console.log("🔍 Bank Handles:", encryptedResult.handles)
-      console.log("🔍 Bank InputProof:", encryptedResult.inputProof)
       
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
         throw new Error("Encryption failed - no handle returned")
@@ -804,11 +745,9 @@ const handleTransfer = async () => {
       externalEuint64 = toHex(encryptedResult.handles[0])
       inputProof = toHex(encryptedResult.inputProof)
       
-      console.log("🔍 Bank ExternalEuint64:", externalEuint64)
-      console.log("🔍 Bank InputProof:", inputProof)
       
     } catch (encryptError) {
-      console.error("❌ Bank Encryption error:", encryptError)
+      logger.error("Bank Encryption error", encryptError)
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
@@ -833,19 +772,17 @@ const handleTransfer = async () => {
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Transfer completed! Refreshing balance..."
-      console.log("🔍 Bank Transaction result:", txResult)
       
       // Now fetch the balance after the transaction is confirmed
       await fetchBalanceHandle()
-      console.log("🔍 Bank Balance after transfer:", balanceHandle.value)
       
     } catch (txError) {
-      console.error("Bank Transaction error:", txError)
+      logger.error("Bank Transaction error", txError)
       throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
     }
   } catch (error) {
     message.value = `❌ Transfer failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Bank Transfer error:", error)
+    logger.error("Bank Transfer error", error)
   } finally {
     isProcessing.value = false
   }
@@ -857,49 +794,21 @@ const handleDecryptBalance = async () => {
     return
   }
 
-  console.log("🔍 Bank canDecrypt.value:", canDecrypt.value)
-  console.log("🔍 Bank canDecrypt type:", typeof canDecrypt.value)
-  
   if (!canDecrypt.value) {
     message.value = "⚠️ Cannot decrypt - missing dependencies (signer, instance, or requests)"
     return
   }
 
   try {
-    console.log("🔍 Bank Starting signature-based decryption...")
-    console.log("🔍 Bank Balance Handle:", balanceHandle.value)
-    console.log("🔍 Bank Balance Handle type:", typeof balanceHandle.value)
-    console.log("🔍 Bank Balance Handle toString():", balanceHandle.value?.toString())
-    console.log("🔍 Bank Contract address:", bankConfig.address)
-    console.log("🔍 Bank Current user address:", address.value)
-    console.log("🔍 Bank Current results before decryption:", results.value)
-    console.log("🔍 Bank About to call performDecrypt()...")
-    console.log("🔍 Bank performDecrypt function:", typeof performDecrypt)
-    console.log("🔍 Bank performDecrypt function exists:", !!performDecrypt)
-    
     // Use the signature-based decryption
-    console.log("🔍 Bank Calling performDecrypt now...")
     await performDecrypt()
-    console.log("🔍 Bank performDecrypt() completed!")
     
     // Wait a moment for results to be processed
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    console.log("🔍 Bank Results after decryption:", results.value)
-    console.log("🔍 Bank Decrypted value computed:", decryptedValue.value)
-    console.log("🔍 Bank Handle key for lookup:", balanceHandle.value.toString())
-    
     // Check if we got a valid result
     if (decryptedValue.value === null) {
-      console.warn("⚠️ Bank Decryption returned null - checking results object...")
-      console.log("🔍 Bank Full results object:", JSON.stringify(results.value, null, 2))
-      
-      // Try to find the result by handle
-      const handleKey = balanceHandle.value.toString()
-      const result = results.value?.[handleKey]
-      console.log("🔍 Bank Direct lookup result:", result)
-      console.log("🔍 Bank Result type:", typeof result)
-      console.log("🔍 Bank Result value:", result)
+      logger.warn("Bank Decryption returned null", { results: results.value })
     }
     
     // The decrypted value will be available in results and automatically displayed
@@ -907,7 +816,7 @@ const handleDecryptBalance = async () => {
     
   } catch (error) {
     message.value = `❌ Balance decryption failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Bank Decryption error:", error)
+    logger.error("Bank Decryption error", error)
   }
 }
 

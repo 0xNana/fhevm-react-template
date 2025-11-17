@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
-import { FHEVMProvider, useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage } from "@fhevm/sdk/react";
+import { FHEVMProvider, useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage, logger } from "@fhevm/sdk/react";
 import { ethers } from "ethers";
 import { useReadContract, useWriteContract } from "wagmi";
 import { getContractConfig } from "~~/contracts";
@@ -43,7 +43,7 @@ function BankDemoContent() {
         const keypair = instance.generateKeypair();
         return keypair.publicKey;
       } catch (error) {
-        console.error("Failed to generate keypair:", error);
+        logger.error("Failed to generate keypair", error);
         return null;
       }
     }
@@ -62,13 +62,9 @@ function BankDemoContent() {
       const provider = new ethers.BrowserProvider((window as any).ethereum);
       const signer = new ethers.JsonRpcSigner(provider, address);
       
-      // Log signer methods for debugging
-      console.log('🔍 Bank ethersSigner Methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(signer)));
-      console.log('🔍 Bank ethersSigner has signTypedData:', typeof signer.signTypedData === 'function');
-      
       return signer;
     } catch (error) {
-      console.error('Failed to create ethers signer:', error);
+      logger.error('Failed to create ethers signer', error);
       return undefined;
     }
   }, [isConnected, address]);
@@ -147,24 +143,19 @@ function BankDemoContent() {
 
   // Watch for changes in fetchedBalance and update balanceHandle (like Vue version)
   useEffect(() => {
-    console.log("🔍 Bank fetchedBalance watcher triggered:", fetchedBalance);
     if (fetchedBalance) {
       setBalanceHandle(fetchedBalance as string);
-      console.log("🔍 Bank Fetched balance:", fetchedBalance);
     }
   }, [fetchedBalance]);
 
   // Watch for changes in fetchedTotalSupply and update totalSupplyHandle (like Vue version)
   useEffect(() => {
-    console.log("🔍 Bank fetchedTotalSupply watcher triggered:", fetchedTotalSupply);
     if (fetchedTotalSupply) {
       setTotalSupplyHandle(fetchedTotalSupply as string);
-      console.log("🔍 Bank Fetched total supply:", fetchedTotalSupply);
     }
   }, [fetchedTotalSupply]);
 
-  // Debug: Log current state for debugging
-  console.log("🔍 Bank Current state (using getEncryptedBalance/getEncryptedTotalSupply):", {
+  logger.debug("Bank Current state", {
     balanceHandle,
     totalSupplyHandle,
     resultsKeys: Object.keys(results),
@@ -182,23 +173,14 @@ function BankDemoContent() {
 
   // Manual balance fetch function (like Vue version)
   const fetchBalanceHandle = async () => {
-    console.log("🔍 Bank fetchBalanceHandle called");
-    console.log("🔍 Bank bankConfig.address:", bankConfig.address);
-    console.log("🔍 Bank isReady:", isReady);
-    console.log("🔍 Bank address:", address);
-    
     if (!bankConfig.address || !isReady || !address) {
-      console.log("🔍 Bank Missing requirements for fetchBalanceHandle");
       return;
     }
-    
+
     try {
-      console.log("🔍 Bank Calling refetchBalance (getEncryptedBalance) directly...");
-      const result = await refetchBalance();
-      console.log("🔍 Bank refetchBalance result:", result);
-      console.log("🔍 Bank refetchBalance completed");
+      await refetchBalance();
     } catch (error) {
-      console.error("Failed to fetch encrypted balance handle:", error);
+      logger.error("Failed to fetch encrypted balance handle", error);
     }
   };
 
@@ -262,9 +244,6 @@ function BankDemoContent() {
       // Fetch balance handle after successful transaction (like Vue version)
       await fetchBalanceHandle();
       await refetchTotalSupply();
-      console.log("🔍 Bank Balance after deposit:", balanceHandle);
-      console.log("🔍 Bank Balance handle type:", typeof balanceHandle);
-      console.log("🔍 Bank Balance handle value:", balanceHandle);
     } catch (error) {
       setMessage(`Deposit failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -331,7 +310,6 @@ function BankDemoContent() {
       // Fetch balance handle after successful transaction (like Vue version)
       await fetchBalanceHandle();
       await refetchTotalSupply();
-      console.log("🔍 Bank Balance after withdrawal:", balanceHandle);
     } catch (error) {
       setMessage(`Withdrawal failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -402,7 +380,6 @@ function BankDemoContent() {
       
       // Fetch balance handle after successful transaction (like Vue version)
       await fetchBalanceHandle();
-      console.log("🔍 Bank Balance after transfer:", balanceHandle);
     } catch (error) {
       setMessage(`Transfer failed: ${error instanceof Error ? error.message : String(error)}`);
     } finally {

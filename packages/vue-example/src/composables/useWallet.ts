@@ -1,5 +1,6 @@
 import { useAccount, useConnect, useDisconnect, useChainId } from '@wagmi/vue'
 import { computed } from 'vue'
+import { logger } from '@fhevm/sdk/vue'
 
 /**
  * Vue composable for wallet functionality
@@ -28,7 +29,7 @@ export function useWallet() {
         await connect({ connector: targetConnector })
       }
     } catch (error) {
-      console.error('Failed to connect wallet:', error)
+      logger.error('Failed to connect wallet', error)
       throw error
     }
   }
@@ -37,7 +38,7 @@ export function useWallet() {
     try {
       await disconnect()
     } catch (error) {
-      console.error('Failed to disconnect wallet:', error)
+      logger.error('Failed to disconnect wallet', error)
       throw error
     }
   }

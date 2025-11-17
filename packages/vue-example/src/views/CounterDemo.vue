@@ -233,7 +233,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage } from '@fhevm/sdk/vue'
+import { useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage, logger } from '@fhevm/sdk/vue'
 import { useWallet } from '@/composables/useWallet'
 import { getContractConfig } from '@/contracts'
 import { useReadContract, useWriteContract } from '@wagmi/vue'
@@ -251,13 +251,9 @@ const ethersSigner = computed(() => {
     const provider = new ethers.BrowserProvider((window as any).ethereum)
     const signer = new ethers.JsonRpcSigner(provider, address.value)
     
-    // Log signer methods for debugging
-    console.log('🔍 ethersSigner Methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(signer)))
-    console.log('🔍 ethersSigner has signTypedData:', typeof signer.signTypedData === 'function')
-    
     return signer
   } catch (error) {
-    console.error('Failed to create ethers signer:', error)
+    logger.error('Failed to create ethers signer', error)
     return undefined
   }
 })
@@ -274,10 +270,7 @@ const fhevmConfig = {
   }
 }
 
-// Add debugging for Relayer SDK loading
-console.log("🔍 FHEVM Config:", fhevmConfig)
-console.log("🔍 Window object:", typeof window !== 'undefined' ? 'available' : 'undefined')
-console.log("🔍 RelayerSDK in window:", typeof window !== 'undefined' && 'relayerSDK' in window ? 'available' : 'not available')
+// Debug info available via logger.debug if needed
 
 // FHEVM
 const { 
@@ -312,7 +305,7 @@ const countHandle = ref<string | null>(null)
 
 // Use useReadContract but only when we explicitly want to fetch
 const { data: fetchedHandle, refetch: refetchCount, error: fetchError } = useReadContract({
-  address: counterConfig.address,
+  address: counterConfig.address as `0x${string}`,
   abi: counterConfig.abi as any,
   functionName: 'getCount',
   query: {
@@ -321,49 +314,30 @@ const { data: fetchedHandle, refetch: refetchCount, error: fetchError } = useRea
   },
 })
 
-// Debug the useReadContract state
-watch([fetchedHandle, fetchError], () => {
-  console.log("🔍 useReadContract state:", {
-    handle: fetchedHandle.value,
-    error: fetchError.value,
-    address: counterConfig.address
-  })
-})
-
 // Watch for changes in fetchedHandle and update countHandle
 watch(fetchedHandle, (newHandle) => {
-  console.log("🔍 fetchedHandle watcher triggered:", newHandle)
   if (newHandle) {
     countHandle.value = newHandle as string
-    console.log("🔍 Fetched handle:", newHandle)
   }
 })
 
 // Watch for fetch errors
 watch(fetchError, (error) => {
   if (error) {
-    console.error("🔍 Fetch error:", error)
+    logger.error("Fetch error", error)
   }
 })
 
 // Manual function to fetch the handle - ONLY after user operations
 const fetchCountHandle = async () => {
-  console.log("🔍 fetchCountHandle called")
-  console.log("🔍 counterConfig.address:", counterConfig.address)
-  console.log("🔍 isFHEVMConnected.value:", isFHEVMConnected.value)
-  
   if (!counterConfig.address || !isFHEVMConnected.value) {
-    console.log("🔍 Missing requirements for fetchCountHandle")
     return
   }
   
   try {
-    console.log("🔍 Calling refetchCount directly...")
-    const result = await refetchCount()
-    console.log("🔍 refetchCount result:", result)
-    console.log("🔍 refetchCount completed")
+    await refetchCount()
   } catch (error) {
-    console.error("Failed to fetch count handle:", error)
+    logger.error("Failed to fetch count handle", error)
   }
 }
 
@@ -417,7 +391,7 @@ const resetDecryptionState = () => {
 
 // Debug dependencies - watch for changes
 watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
-  console.log('🔍 Dependencies check:', {
+  logger.debug('Dependencies check', {
     instance: !!state.value.instance,
     ethersSigner: !!ethersSigner.value,
     ethersSignerType: typeof ethersSigner.value,
@@ -445,35 +419,22 @@ const isProcessing = ref(false)
 
 // Extract decrypted value from results
 const decryptedValue = computed(() => {
-  console.log("🔍 decryptedValue computed - checking...")
-  console.log("🔍 countHandle.value:", countHandle.value)
-  console.log("🔍 results.value:", results.value)
-  
   if (!countHandle.value) {
-    console.log("🔍 No countHandle, returning null")
     return null
   }
   
   if (countHandle.value === ethers.ZeroHash) {
-    console.log("🔍 countHandle is ZeroHash, returning 0")
     return 0
   }
   
   const handleKey = countHandle.value.toString()
-  console.log("🔍 Handle key:", handleKey)
-  
   const clear = results.value?.[handleKey]
-  console.log("🔍 Clear value from results:", clear)
-  console.log("🔍 Clear type:", typeof clear)
   
   if (typeof clear === "undefined") {
-    console.log("🔍 Clear is undefined, returning null")
     return null
   }
   
-  const numberValue = Number(clear)
-  console.log("🔍 Converted to number:", numberValue)
-  return numberValue
+  return Number(clear)
 })
 
 const isDecrypted = computed(() => {
@@ -516,10 +477,6 @@ const handleIncrement = async () => {
       input.add32(1) // Increment by 1
       const encryptedResult = await input.encrypt()
       
-      console.log("🔍 Encryption result:", encryptedResult)
-      console.log("🔍 Handles:", encryptedResult.handles)
-      console.log("🔍 InputProof:", encryptedResult.inputProof)
-      
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
         throw new Error("Encryption failed - no handle returned")
       }
@@ -542,11 +499,8 @@ const handleIncrement = async () => {
       externalEuint32 = toHex(encryptedResult.handles[0])
       inputProof = toHex(encryptedResult.inputProof)
       
-      console.log("🔍 ExternalEuint32:", externalEuint32)
-      console.log("🔍 InputProof:", inputProof)
-      
     } catch (encryptError) {
-      console.error("❌ Encryption error:", encryptError)
+      logger.error("Encryption error", encryptError)
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
@@ -571,19 +525,17 @@ const handleIncrement = async () => {
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Increment completed! Refreshing..."
-      console.log("🔍 Transaction result:", txResult)
       
       // Now fetch the handle after the transaction is confirmed
       await fetchCountHandle()
-      console.log("🔍 Handle after increment:", countHandle.value)
       
     } catch (txError) {
-      console.error("Transaction error:", txError)
+      logger.error("Transaction error", txError)
       throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
     }
   } catch (error) {
     message.value = `❌ Increment failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Increment error:", error)
+    logger.error("Increment error", error)
   } finally {
     isProcessing.value = false
   }
@@ -617,10 +569,6 @@ const handleDecrement = async () => {
       input.add32(1) // Decrement by 1 (contract will subtract this value)
       const encryptedResult = await input.encrypt()
       
-      console.log("🔍 Encryption result:", encryptedResult)
-      console.log("🔍 Handles:", encryptedResult.handles)
-      console.log("🔍 InputProof:", encryptedResult.inputProof)
-      
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
         throw new Error("Encryption failed - no handle returned")
       }
@@ -643,11 +591,8 @@ const handleDecrement = async () => {
       externalEuint32 = toHex(encryptedResult.handles[0])
       inputProof = toHex(encryptedResult.inputProof)
       
-      console.log("🔍 ExternalEuint32:", externalEuint32)
-      console.log("🔍 InputProof:", inputProof)
-      
     } catch (encryptError) {
-      console.error("❌ Encryption error:", encryptError)
+      logger.error("Encryption error", encryptError)
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
@@ -672,19 +617,17 @@ const handleDecrement = async () => {
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Decrement completed! Refreshing..."
-      console.log("🔍 Transaction result:", txResult)
       
       // Now fetch the handle after the transaction is confirmed
       await fetchCountHandle()
-      console.log("🔍 Handle after decrement:", countHandle.value)
       
     } catch (txError) {
-      console.error("Transaction error:", txError)
+      logger.error("Transaction error", txError)
       throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
     }
   } catch (error) {
     message.value = `❌ Decrement failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Decrement error:", error)
+    logger.error("Decrement error", error)
   } finally {
     isProcessing.value = false
   }
@@ -696,49 +639,21 @@ const handleDecrypt = async () => {
     return
   }
 
-  console.log("🔍 canDecrypt.value:", canDecrypt.value)
-  console.log("🔍 canDecrypt type:", typeof canDecrypt.value)
-  
   if (!canDecrypt.value) {
     message.value = "⚠️ Cannot decrypt - missing dependencies (signer, instance, or requests)"
     return
   }
 
   try {
-    console.log("🔍 Starting signature-based decryption...")
-    console.log("🔍 Handle:", countHandle.value)
-    console.log("🔍 Handle type:", typeof countHandle.value)
-    console.log("🔍 Handle toString():", countHandle.value?.toString())
-    console.log("🔍 Contract address:", counterConfig.address)
-    console.log("🔍 Current user address:", address.value)
-    console.log("🔍 Current results before decryption:", results.value)
-    console.log("🔍 About to call performDecrypt()...")
-    console.log("🔍 performDecrypt function:", typeof performDecrypt)
-    console.log("🔍 performDecrypt function exists:", !!performDecrypt)
-    
     // Use the signature-based decryption
-    console.log("🔍 Calling performDecrypt now...")
     await performDecrypt()
-    console.log("🔍 performDecrypt() completed!")
     
     // Wait a moment for results to be processed
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    console.log("🔍 Results after decryption:", results.value)
-    console.log("🔍 Decrypted value computed:", decryptedValue.value)
-    console.log("🔍 Handle key for lookup:", countHandle.value.toString())
-    
     // Check if we got a valid result
     if (decryptedValue.value === null) {
-      console.warn("⚠️ Decryption returned null - checking results object...")
-      console.log("🔍 Full results object:", JSON.stringify(results.value, null, 2))
-      
-      // Try to find the result by handle
-      const handleKey = countHandle.value.toString()
-      const result = results.value?.[handleKey]
-      console.log("🔍 Direct lookup result:", result)
-      console.log("🔍 Result type:", typeof result)
-      console.log("🔍 Result value:", result)
+      logger.warn("Decryption returned null", { results: results.value })
     }
     
     // The decrypted value will be available in results and automatically displayed
@@ -746,7 +661,7 @@ const handleDecrypt = async () => {
     
   } catch (error) {
     message.value = `❌ Decryption failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Decryption error:", error)
+    logger.error("Decryption error", error)
   }
 }
 

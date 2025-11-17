@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import type { FhevmInstance } from "../../../index.js"
 import { FhevmDecryptionSignature } from "../../../index.js"
+import { logger } from "../../../utilities/index.js"
 
 export interface FHEDecryptRequest {
   handle: string
@@ -31,20 +32,6 @@ export function useFHEDecrypt(params: {
   const hasError = useMemo(() => error !== null, [error])
 
   const canDecrypt = useMemo(() => {
-    const hasInstance = Boolean(instance)
-    const hasSigner = Boolean(ethersSigner)
-    const hasRequests = Boolean(requests && requests.length > 0)
-    const notDecrypting = !isDecrypting
-    
-    console.log('🔍 useFHEDecrypt canDecrypt check:', {
-      hasInstance,
-      hasSigner,
-      hasRequests,
-      notDecrypting,
-      requestsLength: requests?.length,
-      result: hasInstance && hasSigner && hasRequests && notDecrypting
-    })
-    
     return Boolean(
       instance && 
       ethersSigner && 
@@ -62,23 +49,7 @@ export function useFHEDecrypt(params: {
     storage: any
   ): Promise<any | null> => {
     try {
-      console.log('🔍 Generating decryption signature with:', {
-        instance: !!instance,
-        contractAddresses,
-        signer: !!signer,
-        storage: !!storage
-      })
-      
-      // Use the SDK's proven loadOrSign method
-      console.log('🔍 About to call FhevmDecryptionSignature.loadOrSign with:', {
-        instance: !!instance,
-        contractAddresses,
-        signer: !!signer,
-        signerType: typeof signer,
-        signerMethods: signer ? Object.getOwnPropertyNames(Object.getPrototypeOf(signer)) : [],
-        hasSignTypedData: signer && typeof signer.signTypedData === 'function',
-        storage: !!storage
-      })
+      logger.debug('Generating decryption signature', { contractAddresses })
       
       const signature = await FhevmDecryptionSignature.loadOrSign(
         instance,
@@ -86,46 +57,27 @@ export function useFHEDecrypt(params: {
         signer,
         storage
       )
-      
-      console.log('🔍 FhevmDecryptionSignature.loadOrSign returned:', {
-        signature: !!signature,
-        isNull: signature === null,
-        isUndefined: signature === undefined
-      })
-
-      console.log('🔍 Signature generated:', signature)
 
       if (!signature) {
         throw new Error("Signature generation returned null or undefined.")
       }
 
-      console.log('🔍 Signature Details:', {
-        privateKeyExists: !!signature?.privateKey,
-        publicKeyExists: !!signature?.publicKey,
-        signatureExists: !!signature?.signature,
+      logger.debug('Decryption signature generated', {
         userAddress: signature?.userAddress,
-        contractAddresses: signature?.contractAddresses,
-        startTimestamp: signature?.startTimestamp,
-        durationDays: signature?.durationDays
+        contractAddresses: signature?.contractAddresses
       })
 
       return signature
     } catch (error) {
-      console.error('🔴 Failed to create decryption signature:', error)
+      logger.error('Failed to create decryption signature', error)
       throw error  // Re-throw to be handled by `decrypt` function
     }
   }, [])
 
   const decrypt = useCallback(async (): Promise<void> => {
-    console.log('🔍 decrypt() function called!')
-    console.log('🔍 isDecrypting:', isDecrypting)
-    console.log('🔍 instance:', !!instance)
-    console.log('🔍 ethersSigner:', !!ethersSigner)
-    console.log('🔍 requests:', requests)
-    
     // Early return checks with proper error handling
     if (isDecrypting) {
-      console.warn('Decryption already in progress, skipping')
+      logger.warn('Decryption already in progress, skipping')
       return
     }
 
@@ -151,10 +103,7 @@ export function useFHEDecrypt(params: {
     const thisSigner = ethersSigner
     const thisRequests = requests
 
-    console.log('🔍 Proceeding with decryption...')
-    console.log('🔍 thisInstance:', !!thisInstance)
-    console.log('🔍 thisSigner:', !!thisSigner)
-    console.log('🔍 thisRequests:', thisRequests)
+    logger.debug('Starting decryption', { requestCount: thisRequests.length })
 
     setIsDecrypting(true)
     setMessage("Starting decryption process...")
@@ -163,7 +112,7 @@ export function useFHEDecrypt(params: {
     try {
       // Validate and prepare contract addresses
       const uniqueAddresses = Array.from(new Set(thisRequests.map(r => r.contractAddress)))
-      console.log('🔍 Unique contract addresses:', uniqueAddresses)
+      logger.debug('Contract addresses for decryption', { uniqueAddresses })
       
       if (uniqueAddresses.length === 0) {
         throw new Error("No valid contract addresses found")
@@ -184,15 +133,6 @@ export function useFHEDecrypt(params: {
         fhevmDecryptionSignatureStorage,
       )
 
-      console.log('🔍 Decryption signature result:', {
-        signature: !!sig,
-        hasPrivateKey: !!sig?.privateKey,
-        hasPublicKey: !!sig?.publicKey,
-        hasSignature: !!sig?.signature,
-        userAddress: sig?.userAddress,
-        contractAddresses: sig?.contractAddresses
-      })
-
       if (!sig) {
         throw new Error("Failed to generate decryption signature")
       }
@@ -203,38 +143,11 @@ export function useFHEDecrypt(params: {
         contractAddress: r.contractAddress 
       }))
       
-      console.log('🔍 Calling userDecrypt with:', {
-        mutableReqs,
-        privateKey: !!sig.privateKey,
-        publicKey: !!sig.publicKey,
-        signature: !!sig.signature,
-        contractAddresses: sig.contractAddresses,
+      logger.debug('Calling userDecrypt', {
+        requestCount: mutableReqs.length,
         userAddress: sig.userAddress,
-        startTimestamp: sig.startTimestamp,
-        durationDays: sig.durationDays
+        contractAddresses: sig.contractAddresses
       })
-      
-       console.log('🔍 Detailed signature info:', {
-         privateKeyLength: sig.privateKey?.length,
-         publicKeyLength: sig.publicKey?.length,
-         signatureLength: sig.signature?.length,
-         userAddress: sig.userAddress,
-         contractAddresses: sig.contractAddresses,
-         startTimestamp: sig.startTimestamp,
-         durationDays: sig.durationDays
-       })
-       
-       console.log('🔍 Authorization check:', {
-         signatureUserAddress: sig.userAddress,
-         signerAddress: thisSigner.address,
-         addressesMatch: sig.userAddress === thisSigner.address
-       })
-      
-      console.log('🔍 Mutable requests details:', mutableReqs.map(req => ({
-        handle: req.handle,
-        handleLength: req.handle.length,
-        contractAddress: req.contractAddress
-      })))
 
       let res
       try {
@@ -249,15 +162,20 @@ export function useFHEDecrypt(params: {
           sig.durationDays,
         )
       } catch (userDecryptError) {
-        console.error('🔴 userDecrypt failed:', userDecryptError)
-        throw new Error(`userDecrypt failed: ${userDecryptError instanceof Error ? userDecryptError.message : String(userDecryptError)}`)
+        const errorMessage = userDecryptError instanceof Error ? userDecryptError.message : String(userDecryptError)
+        logger.error('userDecrypt failed', userDecryptError)
+        
+        // Check if this is an authorization error
+        if (errorMessage.includes('not authorized') || errorMessage.includes('not authorized to user decrypt')) {
+          const helpfulMessage = `Authorization required: You must call the contract method (e.g., getEncryptedResults or getCurrentVoteCounts) as a WRITE transaction first to authorize yourself for decryption. The contract will call FHE.allow() to grant you permission. Error: ${errorMessage}`
+          throw new Error(helpfulMessage)
+        }
+        
+        throw new Error(`userDecrypt failed: ${errorMessage}`)
       }
 
+      logger.debug('Decryption successful', { resultCount: res ? Object.keys(res).length : 0 })
       setResults(res)
-      console.log('🔍 userDecrypt result:', res)
-      console.log('🔍 Result type:', typeof res)
-      console.log('🔍 Result keys:', res ? Object.keys(res) : 'null/undefined')
-      console.log('🔍 Result values:', res ? Object.values(res) : 'null/undefined')
 
       setMessage("Decryption completed successfully!")
       setResults(res)
@@ -269,13 +187,10 @@ export function useFHEDecrypt(params: {
       setError(new Error(`${errorCode}: ${errorMessage}`))
       setMessage("Decryption failed")
       
-      console.error('FHEVM Decryption Error:', {
-        error: e,
+      logger.error('FHEVM Decryption Error', {
         message: errorMessage,
         code: errorCode,
-        instance: !!thisInstance,
-        signer: !!thisSigner,
-        requests: thisRequests.length
+        requestCount: thisRequests.length
       })
     } finally {
       setIsDecrypting(false)

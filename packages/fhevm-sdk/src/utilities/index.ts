@@ -1,5 +1,7 @@
 // Utility functions for FHEVM operations
 
+export { logger, createLogger, type LogLevel, type LoggerConfig } from './logger.js';
+
 export const getEncryptionMethod = (internalType: string) => {
   if (internalType.includes("uint8")) return "encrypt8";
   if (internalType.includes("uint16")) return "encrypt16";

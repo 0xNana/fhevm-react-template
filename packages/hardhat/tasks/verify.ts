@@ -23,7 +23,7 @@ task("verify:fhevm", "Verify FHEVM contracts with proper configuration")
       
       if (error.message.includes("bytecode")) {
         console.log("\n🔍 Bytecode mismatch detected. This is common with FHEVM contracts due to:");
-        console.log("1. Network-specific configuration in SepoliaConfig");
+        console.log("1. Network-specific configuration in ZamaEthereumConfig");
         console.log("2. FHEVM library dependencies");
         console.log("\n💡 Try manual verification on Etherscan with the exact source code");
       }

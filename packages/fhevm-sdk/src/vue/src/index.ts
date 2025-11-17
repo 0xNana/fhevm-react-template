@@ -30,7 +30,8 @@ export {
   FHEVMNotInitializedError,
   FHEVMEncryptionError,
   FHEVMDecryptionError,
-  FhevmDecryptionSignature
+  FhevmDecryptionSignature,
+  logger
 } from "../../index.js";
 
 // Composable types

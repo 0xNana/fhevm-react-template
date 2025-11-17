@@ -3,9 +3,9 @@
 import React, { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { RainbowKitCustomConnectButton } from "~~/components/helper/RainbowKitCustomConnectButton";
-import { FHEVMProvider, useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage } from "@fhevm/sdk/react";
+import { FHEVMProvider, useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage, logger } from "@fhevm/sdk/react";
 import { ethers } from "ethers";
-import { useReadContract, useWriteContract } from "wagmi";
+import { useReadContract, useWriteContract, useSimulateContract, useWaitForTransactionReceipt } from "wagmi";
 import { getContractConfig } from "~~/contracts";
 
 /**
@@ -50,7 +50,7 @@ function VotingDemoContent() {
       
       return signer;
     } catch (error) {
-      console.error('Failed to create ethers signer:', error);
+      logger.error('Failed to create ethers signer', error);
       return undefined;
     }
   }, [isConnected, address]);
@@ -100,16 +100,24 @@ function VotingDemoContent() {
     },
   });
 
-  // Encrypted results contract call
-  const { data: encryptedResults, refetch: refetchEncryptedResults } = useReadContract({
+  // Simulate getEncryptedResults to get return values (for getting handles)
+  const [shouldSimulate, setShouldSimulate] = useState(false);
+  const { data: simulatedResults, refetch: simulateGetEncryptedResults } = useSimulateContract({
     address: votingConfig.address as `0x${string}`,
     abi: votingConfig.abi as any,
     functionName: "getEncryptedResults",
     args: [selectedSessionId ? BigInt(selectedSessionId) : BigInt(0)],
     query: {
-      enabled: false,
-      refetchOnWindowFocus: false,
+      enabled: shouldSimulate && Boolean(votingConfig.address && selectedSessionId),
     },
+  });
+
+  // Write contract for getEncryptedResults (to authorize via FHE.allow())
+  const { writeContract: writeGetEncryptedResults, data: hash, isPending: isAuthorizing } = useWriteContract();
+  
+  // Wait for authorization transaction
+  const { isLoading: isWaitingForAuth, isSuccess: isAuthorized } = useWaitForTransactionReceipt({
+    hash,
   });
 
 
@@ -393,31 +401,69 @@ function VotingDemoContent() {
         return;
       }
       
-      // Call getEncryptedResults
-      const result = await refetchEncryptedResults();
+      // Step 1: Simulate to get the handles (return values)
+      // Note: Simulation gives us return values but won't authorize
+      setMessage("Getting encrypted result handles...");
+      setShouldSimulate(true);
+      const simulationResult = await simulateGetEncryptedResults();
       
-      if (result.error) {
-        throw new Error(`Contract call failed: ${result.error.message || result.error}`);
+      if (simulationResult.error) {
+        throw new Error(`Simulation failed: ${simulationResult.error.message || simulationResult.error}`);
       }
       
-      if (!result.data) {
-        throw new Error("Failed to fetch encrypted results - session may not exist or may not have ended");
+      if (!simulationResult.data?.result) {
+        throw new Error("Failed to get handles from simulation - session may not exist or may not have ended");
       }
       
-      // Extract handles from the result (similar to Vue implementation)
+      // Extract handles from simulation result
       let yesVotesHandle: string, noVotesHandle: string, totalVotesHandle: string;
+      const result = simulationResult.data.result;
       
-      if (Array.isArray(result.data) && result.data.length === 3) {
-        [yesVotesHandle, noVotesHandle, totalVotesHandle] = result.data;
-      } else if ((result.data as any).yesVotes !== undefined) {
-        ({ yesVotes: yesVotesHandle, noVotes: noVotesHandle, totalVotes: totalVotesHandle } = result.data as { yesVotes: string, noVotes: string, totalVotes: string });
-      } else if ((result.data as any)[0] !== undefined) {
-        yesVotesHandle = (result.data as any)[0];
-        noVotesHandle = (result.data as any)[1]; 
-        totalVotesHandle = (result.data as any)[2];
+      if (Array.isArray(result) && result.length === 3) {
+        [yesVotesHandle, noVotesHandle, totalVotesHandle] = result as string[];
+      } else if (result && typeof result === 'object' && 'yesVotes' in result) {
+        const resultObj = result as unknown as { yesVotes: string, noVotes: string, totalVotes: string };
+        ({ yesVotes: yesVotesHandle, noVotes: noVotesHandle, totalVotes: totalVotesHandle } = resultObj);
+      } else if (result && typeof result === 'object' && 0 in result) {
+        const resultArr = result as unknown as string[];
+        yesVotesHandle = resultArr[0];
+        noVotesHandle = resultArr[1]; 
+        totalVotesHandle = resultArr[2];
       } else {
         throw new Error("Unknown data structure returned from getEncryptedResults");
       }
+      
+      // Step 2: Authorize by calling as write transaction
+      // This executes FHE.allow() to grant decryption permission
+      setMessage("Authorizing for decryption (executing FHE.allow())...");
+      writeGetEncryptedResults({
+        address: votingConfig.address as `0x${string}`,
+        abi: votingConfig.abi as any,
+        functionName: "getEncryptedResults",
+        args: [BigInt(sessionIdNum)],
+      });
+      
+      // Wait for authorization transaction to complete
+      setMessage("Waiting for authorization transaction to be mined...");
+      
+      // Poll for transaction completion (since we can't await the hook)
+      let authComplete = false;
+      const maxWaitTime = 60000; // 60 seconds
+      const startTime = Date.now();
+      
+      while (!authComplete && (Date.now() - startTime) < maxWaitTime) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Check if transaction is complete by checking the hash
+        if (hash && !isWaitingForAuth && isAuthorized) {
+          authComplete = true;
+        }
+      }
+      
+      if (!authComplete) {
+        throw new Error("Authorization transaction timed out. Please try again.");
+      }
+      
+      setMessage("✅ Authorization complete! You can now decrypt.");
       
       // Check if handles are valid
       if (!yesVotesHandle || !noVotesHandle || !totalVotesHandle || 

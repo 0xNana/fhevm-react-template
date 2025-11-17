@@ -49,11 +49,13 @@ const suppressNoisyWarnings = () => {
 
 export default defineConfig({
   plugins: [vue() as any, suppressNoisyWarnings()],
-  logLevel: 'warn',
+  logLevel: 'info',
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
     },
+    preserveSymlinks: false,
+    dedupe: ['vue', '@vue/runtime-dom', '@tanstack/query-core'],
   },
   server: {
     port: 3001,
@@ -63,15 +65,36 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp'
     }
   },
+  optimizeDeps: {
+    include: [
+      'vue', 
+      'vue-router', 
+      'pinia', 
+      '@vue/runtime-dom', 
+      '@tanstack/query-core', 
+      '@tanstack/vue-query',
+      '@fhevm/sdk',
+      '@fhevm/sdk/vue'
+    ],
+    exclude: ['@zama-fhe/relayer-sdk'],
+    esbuildOptions: {
+      preserveSymlinks: false,
+    },
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
     minify: 'esbuild',
     chunkSizeWarningLimit: 1000,
+    commonjsOptions: {
+      include: [/node_modules/],
+      transformMixedEsModules: true,
+    },
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
+          'vendor-vue': ['vue', 'vue-router', 'pinia', '@vue/runtime-dom'],
+          'vendor-query': ['@tanstack/vue-query', '@tanstack/query-core'],
           'vendor-web3': ['wagmi', 'viem', '@reown/appkit'],
         }
       },

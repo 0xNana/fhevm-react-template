@@ -15,6 +15,7 @@ export type {
   FhevmInstance,
   FhevmInstanceConfig,
   HandleContractPair,
+  RelayerEncryptedInput,
   DecryptedResults
 } from "./types.js";
 

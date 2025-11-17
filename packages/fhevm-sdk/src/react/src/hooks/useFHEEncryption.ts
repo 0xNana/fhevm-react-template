@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { FhevmInstance } from "../../../index.js";
-import { RelayerEncryptedInput } from "@zama-fhe/relayer-sdk/web";
+import { FhevmInstance, RelayerEncryptedInput } from "../../../index.js";
 import { ethers } from "ethers";
 
 export type EncryptResult = {

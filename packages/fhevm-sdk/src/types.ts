@@ -1,7 +1,7 @@
 import type { FhevmInstance as _FhevmInstance } from "@zama-fhe/relayer-sdk/bundle";
 import type { HandleContractPair as _HandleContractPair } from "@zama-fhe/relayer-sdk/bundle";
-import type { DecryptedResults as _DecryptedResults } from "@zama-fhe/relayer-sdk/bundle";
 import type { FhevmInstanceConfig as _FhevmInstanceConfig } from "@zama-fhe/relayer-sdk/web";
+import type { RelayerEncryptedInput as _RelayerEncryptedInput } from "@zama-fhe/relayer-sdk/web";
 import type { Eip1193Provider } from "ethers";
 import type { FhevmDecryptionSignatureType } from "./fhevmTypes.js";
 
@@ -9,7 +9,9 @@ import type { FhevmDecryptionSignatureType } from "./fhevmTypes.js";
 export type FhevmInstance = _FhevmInstance;
 export type FhevmInstanceConfig = _FhevmInstanceConfig;
 export type HandleContractPair = _HandleContractPair;
-export type DecryptedResults = _DecryptedResults;
+export type RelayerEncryptedInput = _RelayerEncryptedInput;
+// DecryptedResults type - may be Record<string, number> or number depending on SDK version
+export type DecryptedResults = Record<string, number> | number;
 
 // Core SDK Configuration
 export interface FHEVMConfig {

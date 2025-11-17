@@ -14,6 +14,7 @@ import {
   FHEVMDecryptionError
 } from "./types.js";
 import { createFhevmInstance } from "./internal/fhevm.js";
+import { logger } from "./utilities/index.js";
 
 /**
  * Universal FHEVM Client - Framework agnostic core for FHEVM operations
@@ -61,7 +62,7 @@ export class FHEVMClient {
         ...(this._config.mockChains && { mockChains: this._config.mockChains }),
         signal,
         onStatusChange: (status) => {
-          console.log(`[FHEVM] Status: ${status}`);
+          logger.debug(`Status: ${status}`);
         }
       });
 
@@ -142,7 +143,24 @@ export class FHEVMClient {
           signature.startTimestamp,
           signature.durationDays
         );
-        return Number(decrypted[handle]);
+        // Handle different possible result structures
+        if (decrypted && typeof decrypted === 'object' && !Array.isArray(decrypted)) {
+          const handleKeys = Object.keys(decrypted);
+          if (handleKeys.length > 0 && handleKeys[0]) {
+            const value = (decrypted as unknown as Record<string, number | string>)[handleKeys[0]];
+            // Handle both hex strings and numbers
+            if (typeof value === 'string' && value.startsWith('0x')) {
+              return Number(BigInt(value));
+            }
+            return Number(value);
+          }
+        }
+        // Fallback: try direct handle access
+        const fallbackValue = (decrypted as any)[handle] || decrypted;
+        if (typeof fallbackValue === 'string' && fallbackValue.startsWith('0x')) {
+          return Number(BigInt(fallbackValue));
+        }
+        return Number(fallbackValue);
       } else {
         throw new FHEVMDecryptionError("Either signature or usePublicDecrypt must be provided");
       }

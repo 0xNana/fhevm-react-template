@@ -1,5 +1,6 @@
 import { FhevmRelayerSDKType, FhevmWindowType } from "./fhevmTypes.js";
 import { SDK_CDN_URL } from "./constants.js";
+import { logger } from "../utilities/index.js";
 
 type TraceType = (message?: unknown, ...optionalParams: unknown[]) => void;
 
@@ -20,20 +21,24 @@ export class RelayerSDKLoader {
   }
 
   public load(): Promise<void> {
-    console.log("[RelayerSDKLoader] load...");
+    logger.debug("RelayerSDKLoader: loading SDK");
     // Ensure this only runs in the browser
     if (typeof window === "undefined") {
-      console.log("[RelayerSDKLoader] window === undefined");
+      logger.debug("RelayerSDKLoader: window is undefined");
       return Promise.reject(
         new Error("RelayerSDKLoader: can only be used in the browser.")
       );
     }
 
-    if ("relayerSDK" in window) {
-      if (!isFhevmRelayerSDKType(window.relayerSDK, this._trace)) {
-        console.log("[RelayerSDKLoader] window.relayerSDK === undefined");
-        throw new Error("RelayerSDKLoader: Unable to load FHEVM Relayer SDK");
+    // Check for both uppercase and lowercase versions (CDN may expose either)
+    const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+    if (sdk) {
+      if (!isFhevmRelayerSDKType(sdk, this._trace)) {
+        logger.warn("RelayerSDKLoader: SDK found but validation failed", { availableProperties: Object.keys(sdk || {}) });
+        throw new Error("RelayerSDKLoader: Unable to load FHEVM Relayer SDK - validation failed");
       }
+      // Store it in the expected location for consistency
+      (window as any).relayerSDK = sdk;
       return Promise.resolve();
     }
 
@@ -42,8 +47,15 @@ export class RelayerSDKLoader {
         `script[src="${SDK_CDN_URL}"]`
       );
       if (existingScript) {
-        // If script exists, wait for it to load if window.relayerSDK isn't ready yet
-        if (!isFhevmWindowType(window, this._trace)) {
+        // If script exists, check if SDK is already loaded
+        const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+        if (sdk && isFhevmRelayerSDKType(sdk, this._trace)) {
+          // SDK is ready, store it in expected location
+          (window as any).relayerSDK = sdk;
+          resolve();
+          return;
+        }
+        
           // Script tag exists but hasn't loaded yet - wait for it
           let resolved = false;
           let checkInterval: ReturnType<typeof setInterval> | null = null;
@@ -55,7 +67,11 @@ export class RelayerSDKLoader {
           
           const checkAndResolve = () => {
             if (resolved) return;
-            if (isFhevmWindowType(window, this._trace)) {
+          // Check for both uppercase and lowercase versions
+          const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+          if (sdk && isFhevmRelayerSDKType(sdk, this._trace)) {
+            // Store it in the expected location for consistency
+            (window as any).relayerSDK = sdk;
               resolved = true;
               cleanup();
               resolve();
@@ -67,14 +83,17 @@ export class RelayerSDKLoader {
           // Also listen for load and error events
           existingScript.addEventListener('load', () => {
             checkAndResolve();
-            if (!resolved && !isFhevmWindowType(window, this._trace)) {
+          if (!resolved) {
+            const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+            if (!sdk || !isFhevmRelayerSDKType(sdk, this._trace)) {
               resolved = true;
               cleanup();
               reject(
                 new Error(
-                  "RelayerSDKLoader: window object does not contain a valid relayerSDK object."
+                  "RelayerSDKLoader: window object does not contain a valid relayerSDK or RelayerSDK object."
                 )
               );
+            }
             }
           });
           
@@ -95,7 +114,8 @@ export class RelayerSDKLoader {
             if (!resolved) {
               resolved = true;
               cleanup();
-              if (!isFhevmWindowType(window, this._trace)) {
+            const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+            if (!sdk || !isFhevmRelayerSDKType(sdk, this._trace)) {
                 reject(
                   new Error(
                     "RelayerSDKLoader: Timeout waiting for SDK script to load. This might be a network issue or the CDN might be blocked. Try copying WASM files locally using 'pnpm run copy-wasm'."
@@ -105,9 +125,6 @@ export class RelayerSDKLoader {
             }
           }, 5000);
           
-          return;
-        }
-        resolve();
         return;
       }
 
@@ -117,19 +134,28 @@ export class RelayerSDKLoader {
       script.async = true;
 
       script.onload = () => {
-        if (!isFhevmWindowType(window, this._trace)) {
-          console.log("[RelayerSDKLoader] script onload FAILED...");
+        // Check for both uppercase and lowercase versions
+        const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+        if (!sdk || !isFhevmRelayerSDKType(sdk, this._trace)) {
+          logger.error("RelayerSDKLoader: script loaded but SDK validation failed", {
+            hasRelayerSDK: "relayerSDK" in window,
+            hasRelayerSDKUppercase: "RelayerSDK" in window,
+            windowKeys: Object.keys(window).filter(k => k.toLowerCase().includes("relayer"))
+          });
           reject(
             new Error(
-              `RelayerSDKLoader: Relayer SDK script has been successfully loaded from ${SDK_CDN_URL}, however, the window.relayerSDK object is invalid.`
+              `RelayerSDKLoader: Relayer SDK script has been successfully loaded from ${SDK_CDN_URL}, however, the window.relayerSDK or window.RelayerSDK object is invalid.`
             )
           );
         }
+        // Store it in the expected location for consistency
+        (window as any).relayerSDK = sdk;
+        logger.debug("RelayerSDKLoader: SDK loaded successfully");
         resolve();
       };
 
       script.onerror = () => {
-        console.log("[RelayerSDKLoader] script onerror... ");
+        logger.error(`RelayerSDKLoader: Failed to load SDK from ${SDK_CDN_URL}`);
         reject(
           new Error(
             `RelayerSDKLoader: Failed to load Relayer SDK from ${SDK_CDN_URL}`
@@ -137,9 +163,8 @@ export class RelayerSDKLoader {
         );
       };
 
-      console.log("[RelayerSDKLoader] add script to DOM...");
+      logger.debug("RelayerSDKLoader: Adding script to DOM", { url: SDK_CDN_URL });
       document.head.appendChild(script);
-      console.log("[RelayerSDKLoader] script added!")
     });
   }
 }
@@ -168,8 +193,12 @@ function isFhevmRelayerSDKType(
     trace?.("RelayerSDKLoader: relayerSDK.createInstance is invalid");
     return false;
   }
-  if (!objHasProperty(o, "SepoliaConfig", "object", trace)) {
-    trace?.("RelayerSDKLoader: relayerSDK.SepoliaConfig is invalid");
+  // Check for either ZamaEthereumConfig (v0.9+) or SepoliaConfig (v0.8, backward compat)
+  // Check SepoliaConfig first (what CDN v0.3.0-5 has) to avoid noisy warnings
+  const hasSepoliaConfig = objHasProperty(o, "SepoliaConfig", "object", undefined); // Don't trace for optional check
+  const hasZamaConfig = objHasProperty(o, "ZamaEthereumConfig", "object", undefined); // Don't trace for optional check
+  if (!hasZamaConfig && !hasSepoliaConfig) {
+    trace?.("RelayerSDKLoader: relayerSDK must have either ZamaEthereumConfig or SepoliaConfig");
     return false;
   }
   if ("__initialized__" in o) {

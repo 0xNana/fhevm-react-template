@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { useAccount } from '@wagmi/vue'
 import { ethers } from 'ethers'
+import { logger } from '@fhevm/sdk/vue'
 
 /**
  * Vue composable for getting ethers signer from wagmi
@@ -30,10 +31,10 @@ export function useEthersSigner() {
         return await client.request(args)
       },
       on: () => {
-        console.log("Provider events not fully implemented for wagmi")
+        logger.debug("Provider events not fully implemented for wagmi")
       },
       removeListener: () => {
-        console.log("Provider removeListener not fully implemented for wagmi")
+        logger.debug("Provider removeListener not fully implemented for wagmi")
       },
     } as ethers.Eip1193Provider
 

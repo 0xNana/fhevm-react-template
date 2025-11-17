@@ -2,6 +2,7 @@ import { isAddress, Eip1193Provider, JsonRpcProvider } from "ethers";
 import type { FhevmInstance } from "@zama-fhe/relayer-sdk/bundle";
 import type { FhevmInstanceConfig } from "@zama-fhe/relayer-sdk/web";
 import { FHEVMError, FHEVMAbortError } from "../types.js";
+import { logger } from "../utilities/index.js";
 
 export type {
   FhevmInitSDKOptions,
@@ -10,7 +11,7 @@ export type {
   FhevmWindowType,
 } from "./fhevmTypes.js";
 
-import { isFhevmWindowType, RelayerSDKLoader } from "./RelayerSDKLoader.js";
+import { RelayerSDKLoader } from "./RelayerSDKLoader.js";
 import { publicKeyStorageGet, publicKeyStorageSet } from "./PublicKeyStorage.js";
 
 export class FhevmReactError extends FHEVMError {
@@ -29,50 +30,58 @@ function throwFhevmError(
 }
 
 const isFhevmInitialized = (): boolean => {
-  if (!isFhevmWindowType(window, console.log)) {
+  // Check for both uppercase and lowercase versions
+  const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+  if (!sdk) {
     return false;
   }
-  return window.relayerSDK.__initialized__ === true;
+  return sdk.__initialized__ === true;
 };
 
 const fhevmLoadSDK = () => {
-  const loader = new RelayerSDKLoader({ trace: console.log });
+  const loader = new RelayerSDKLoader({ trace: logger.debug.bind(logger) });
   return loader.load();
 };
 
 const fhevmInitSDK = async (options?: any): Promise<boolean> => {
-  if (!isFhevmWindowType(window, console.log)) {
-    throw new Error("window.relayerSDK is not available");
+  // Check for both uppercase and lowercase versions
+  const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+  if (!sdk) {
+    throw new Error("window.relayerSDK or window.RelayerSDK is not available");
   }
   
+  // Store in expected location for consistency
+  (window as any).relayerSDK = sdk;
+  
   try {
-    const result = await window.relayerSDK.initSDK(options);
-    window.relayerSDK.__initialized__ = result;
+    const result = await sdk.initSDK(options);
+    sdk.__initialized__ = result;
     if (!result) {
       throw new Error("window.relayerSDK.initSDK returned false.");
     }
+    logger.info("FHEVM SDK initialized with CDN");
     return true;
   } catch (error) {
     // If initialization fails and no custom options were provided, try local fallback
     if (!options && error instanceof Error) {
-      console.warn("[FHEVM] SDK initialization failed, trying local WASM files fallback:", error.message);
+      logger.warn("SDK initialization failed, trying local WASM files fallback", error.message);
       
       try {
         const localOptions = {
           tfheParams: "/tfhe_bg.wasm",
           kmsParams: "/kms_lib_bg.wasm"
         };
-        console.log("[FHEVM] Attempting to initialize with local WASM files:", localOptions);
+        logger.debug("Attempting to initialize with local WASM files", localOptions);
         
-        const result = await window.relayerSDK.initSDK(localOptions);
-        window.relayerSDK.__initialized__ = result;
+        const result = await sdk.initSDK(localOptions);
+        sdk.__initialized__ = result;
         if (!result) {
           throw new Error("window.relayerSDK.initSDK with local files returned false.");
         }
-        console.log("[FHEVM] ✅ Successfully initialized with local WASM files");
+        logger.info("Successfully initialized with local WASM files");
         return true;
       } catch (fallbackError) {
-        console.error("[FHEVM] ❌ Local WASM fallback also failed:", fallbackError);
+        logger.error("Local WASM fallback also failed", fallbackError);
         // Re-throw the original error, not the fallback error
         throw error;
       }
@@ -296,7 +305,10 @@ export const createFhevmInstance = async (parameters: {
 
   throwIfAborted();
 
-  if (!isFhevmWindowType(window, console.log)) {
+  // Check for both uppercase and lowercase versions
+  let relayerSDK = (window as any).RelayerSDK || (window as any).relayerSDK;
+  
+  if (!relayerSDK) {
     notify("sdk-loading");
 
     // throws an error if failed
@@ -304,6 +316,14 @@ export const createFhevmInstance = async (parameters: {
     throwIfAborted();
 
     notify("sdk-loaded");
+    
+    // After loading, check again
+    relayerSDK = (window as any).RelayerSDK || (window as any).relayerSDK;
+    if (!relayerSDK) {
+      throw new Error("RelayerSDK not found after loading from CDN");
+    }
+    // Store in expected location for consistency
+    (window as any).relayerSDK = relayerSDK;
   }
 
   // notify that state === "sdk-loaded"
@@ -316,11 +336,18 @@ export const createFhevmInstance = async (parameters: {
     throwIfAborted();
 
     notify("sdk-initialized");
+    
+    // Refresh reference after initialization
+    relayerSDK = (window as any).RelayerSDK || (window as any).relayerSDK;
   }
 
-  const relayerSDK = (window as unknown as any).relayerSDK;
+  // Use ZamaEthereumConfig (v0.9+) if available, otherwise fall back to SepoliaConfig (v0.8)
+  const configBase = relayerSDK.ZamaEthereumConfig || relayerSDK.SepoliaConfig;
+  if (!configBase) {
+    throw new Error("Neither ZamaEthereumConfig nor SepoliaConfig found in relayerSDK");
+  }
 
-  const aclAddress = relayerSDK.SepoliaConfig.aclContractAddress;
+  const aclAddress = configBase.aclContractAddress;
   if (!checkIsAddress(aclAddress)) {
     throw new Error(`Invalid address: ${aclAddress}`);
   }
@@ -329,7 +356,7 @@ export const createFhevmInstance = async (parameters: {
   throwIfAborted();
 
   const config: FhevmInstanceConfig = {
-    ...relayerSDK.SepoliaConfig,
+    ...configBase,
     network: providerOrUrl,
     publicKey: pub.publicKey,
     publicParams: pub.publicParams,

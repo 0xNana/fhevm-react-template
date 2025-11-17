@@ -2,14 +2,14 @@
 pragma solidity ^0.8.24;
 
 import { FHE, euint64, ebool, externalEuint64 } from "@fhevm/solidity/lib/FHE.sol";
-import { SepoliaConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
+import { ZamaEthereumConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /**
  * @title FHEBank
  * @dev A confidential banking contract using FHEVM
  * @notice This contract allows users to deposit, withdraw, and transfer encrypted amounts
  */
-contract FHEBank is SepoliaConfig {
+contract FHEBank is ZamaEthereumConfig {
     // User balance mapping (encrypted)
     mapping(address => euint64) private _balances;
     

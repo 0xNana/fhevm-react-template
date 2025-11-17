@@ -33,7 +33,8 @@ export {
   FHEVMAbortError,
   FHEVMNotInitializedError,
   FHEVMEncryptionError,
-  FHEVMDecryptionError
+  FHEVMDecryptionError,
+  logger
 } from "../../index.js";
 
 // Hook types

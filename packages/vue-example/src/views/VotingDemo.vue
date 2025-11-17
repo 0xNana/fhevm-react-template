@@ -437,7 +437,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage } from '@fhevm/sdk/vue'
+import { useFHEVM, useFHEVMSignature, useFHEDecrypt, useInMemoryStorage, logger } from '@fhevm/sdk/vue'
 import { useWallet } from '@/composables/useWallet'
 import { getContractConfig } from '@/contracts'
 import { useReadContract, useWriteContract } from '@wagmi/vue'
@@ -455,13 +455,9 @@ const ethersSigner = computed(() => {
     const provider = new ethers.BrowserProvider((window as any).ethereum)
     const signer = new ethers.JsonRpcSigner(provider, address.value)
     
-    // Log signer methods for debugging
-    console.log('🔍 Voting ethersSigner Methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(signer)))
-    console.log('🔍 Voting ethersSigner has signTypedData:', typeof signer.signTypedData === 'function')
-    
     return signer
   } catch (error) {
-    console.error('Failed to create ethers signer:', error)
+    logger.error('Failed to create ethers signer', error)
     return undefined
   }
 })
@@ -478,10 +474,7 @@ const fhevmConfig = {
   }
 }
 
-// Add debugging for Relayer SDK loading
-console.log("🔍 Voting FHEVM Config:", fhevmConfig)
-console.log("🔍 Voting Window object:", typeof window !== 'undefined' ? 'available' : 'undefined')
-console.log("🔍 Voting RelayerSDK in window:", typeof window !== 'undefined' && 'relayerSDK' in window ? 'available' : 'not available')
+// Debug info available via logger.debug if needed
 
 // FHEVM
 const { 
@@ -526,7 +519,7 @@ const sessionId = ref<string>("0")
 
 // Contract interactions - Session info and voting status
 const { data: sessionInfo, refetch: refetchSessionInfo } = useReadContract({
-  address: votingConfig.address,
+  address: votingConfig.address as `0x${string}`,
   abi: votingConfig.abi as any,
   functionName: 'getVotingSessionInfo',
   args: computed(() => [BigInt(sessionId.value)]),
@@ -537,7 +530,7 @@ const { data: sessionInfo, refetch: refetchSessionInfo } = useReadContract({
 })
 
 const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
-  address: votingConfig.address,
+  address: votingConfig.address as `0x${string}`,
   abi: votingConfig.abi as any,
   functionName: 'hasUserVoted',
   args: computed(() => [address.value!, BigInt(sessionId.value)]),
@@ -549,7 +542,7 @@ const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
 
 // For fetching encrypted results - use useReadContract since getEncryptedResults is now view
 const { data: encryptedResults, refetch: refetchEncryptedResults } = useReadContract({
-  address: votingConfig.address,
+  address: votingConfig.address as `0x${string}`,
   abi: votingConfig.abi as any,
   functionName: 'getEncryptedResults',
   args: computed(() => [BigInt(sessionId.value)]),
@@ -559,14 +552,14 @@ const { data: encryptedResults, refetch: refetchEncryptedResults } = useReadCont
   },
 })
 
-// Watch for session ID changes and log the current args
-watch(() => [BigInt(sessionId.value)], (newArgs) => {
-  console.log("🔍 Voting encryptedResults args changed to:", newArgs)
+// Watch for session ID changes
+watch(() => [BigInt(sessionId.value)], () => {
+  // Session ID changed, will trigger refetch when needed
 }, { immediate: true })
 
 // For getting the current session counter
 const { data: sessionCounter, refetch: refetchSessionCounter } = useReadContract({
-  address: votingConfig.address,
+  address: votingConfig.address as `0x${string}`,
   abi: votingConfig.abi as any,
   functionName: 'sessionCounter',
   query: {
@@ -599,8 +592,6 @@ const resultsHandles = ref<{yesVotes: string | null, noVotes: string | null, tot
 // Watch for session ID changes and reset results handles
 watch(sessionId, async (newSessionId, oldSessionId) => {
   if (newSessionId !== oldSessionId) {
-    console.log("🔍 Voting Session ID changed from", oldSessionId, "to", newSessionId)
-    
     // Always reset handles when session ID changes
     resultsHandles.value = {
       yesVotes: null,
@@ -608,16 +599,12 @@ watch(sessionId, async (newSessionId, oldSessionId) => {
       totalVotes: null
     }
     
-    // Clear any existing decryption results
-    console.log("🔍 Voting Cleared results handles for new session:", newSessionId)
-    
     // Only auto-fetch if we have a valid session ID
     if (newSessionId && newSessionId !== "0") {
       try {
-        console.log("🔍 Voting Auto-fetching results for new session:", newSessionId)
         await fetchResultsHandles()
       } catch (error) {
-        console.log("🔍 Voting Auto-fetch failed (session may not be ended yet):", error)
+        logger.debug("Auto-fetch failed (session may not be ended yet)", error)
       }
     }
   }
@@ -626,8 +613,6 @@ watch(sessionId, async (newSessionId, oldSessionId) => {
 // Get latest results handles for the current session
 const getLatestResultsHandles = async () => {
   try {
-    console.log("🔍 Voting getLatestResultsHandles called for session:", sessionId.value)
-    
     if (!sessionId.value || sessionId.value === "0") {
       message.value = "⚠️ Please select a session first"
       return
@@ -640,12 +625,11 @@ const getLatestResultsHandles = async () => {
       totalVotes: null
     }
     
-    console.log("🔍 Voting Cleared existing handles, fetching fresh ones...")
     await fetchResultsHandles()
     message.value = `✅ Latest results handles fetched for session ${sessionId.value}!`
     
   } catch (error) {
-    console.error("Failed to get latest results handles:", error)
+    logger.error("Failed to get latest results handles", error)
     message.value = `❌ Failed to get latest results: ${error instanceof Error ? error.message : String(error)}`
   }
 }
@@ -653,8 +637,6 @@ const getLatestResultsHandles = async () => {
 // Force refresh results handles for current session
 const forceRefreshResultsHandles = async () => {
   try {
-    console.log("🔍 Voting forceRefreshResultsHandles called for session:", sessionId.value)
-    
     if (!sessionId.value || sessionId.value === "0") {
       message.value = "⚠️ Please select a session first"
       return
@@ -668,21 +650,18 @@ const forceRefreshResultsHandles = async () => {
     }
     
     // Force refetch with current session ID
-    console.log("🔍 Voting Force refetching with session ID:", sessionId.value)
     await fetchResultsHandles()
     
     message.value = `✅ Results handles refreshed for session ${sessionId.value}!`
     
   } catch (error) {
-    console.error("Failed to force refresh results handles:", error)
+    logger.error("Failed to force refresh results handles", error)
     message.value = `❌ Failed to refresh results: ${error instanceof Error ? error.message : String(error)}`
   }
 }
 
 // Force clear all handles and reset state
 const forceClearAllHandles = () => {
-  console.log("🔍 Voting forceClearAllHandles called")
-  
   // Clear all handles
   resultsHandles.value = {
     yesVotes: null,
@@ -692,8 +671,6 @@ const forceClearAllHandles = () => {
   
   // Reset session ID to force fresh start
   sessionId.value = "0"
-  
-  console.log("🔍 Voting All handles cleared and session reset")
   message.value = "🔄 All handles cleared - select a new session"
 }
 
@@ -756,12 +733,7 @@ const resetDecryptionState = () => {
 
 // Extract decrypted results from results
 const decryptedResults = computed(() => {
-  console.log("🔍 Voting decryptedResults computed - checking...")
-  console.log("🔍 Voting resultsHandles.value:", resultsHandles.value)
-  console.log("🔍 Voting results.value:", results.value)
-  
   if (!resultsHandles.value.yesVotes || !resultsHandles.value.noVotes || !resultsHandles.value.totalVotes) {
-    console.log("🔍 Voting No results handles, returning null")
     return null
   }
   
@@ -769,24 +741,17 @@ const decryptedResults = computed(() => {
   const noVotesKey = resultsHandles.value.noVotes.toString()
   const totalVotesKey = resultsHandles.value.totalVotes.toString()
   
-  console.log("🔍 Voting Handle keys:", { yesVotesKey, noVotesKey, totalVotesKey })
-  
   const yesVotes = results.value?.[yesVotesKey]
   const noVotes = results.value?.[noVotesKey]
   const totalVotes = results.value?.[totalVotesKey]
   
-  console.log("🔍 Voting Clear values from results:", { yesVotes, noVotes, totalVotes })
-  
   if (typeof yesVotes === "undefined" || typeof noVotes === "undefined" || typeof totalVotes === "undefined") {
-    console.log("🔍 Voting Some results are undefined, returning null")
     return null
   }
   
   const yesVotesNum = Number(yesVotes)
   const noVotesNum = Number(noVotes)
   const totalVotesNum = Number(totalVotes)
-  
-  console.log("🔍 Voting Converted to numbers:", { yesVotesNum, noVotesNum, totalVotesNum })
   
   return {
     yesVotes: yesVotesNum,
@@ -837,14 +802,13 @@ const handleCreateSession = async () => {
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     message.value = `✅ Voting session created: "${sessionTitle.value}"`
-    console.log("🔍 Voting Session creation result:", txResult)
     
     // Refresh session info
     await refetchSessionInfo()
     
   } catch (error) {
     message.value = `❌ Session creation failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Voting Session creation error:", error)
+    logger.error("Voting Session creation error", error)
   } finally {
     isProcessing.value = false
   }
@@ -881,20 +845,12 @@ const handleCastVote = async () => {
       
       // Encrypt boolean value (true for yes, false for no)
       const voteValue = voteChoice.value === "yes"
-      console.log("🔍 Voting Encrypting boolean value:", voteValue)
       
       // Use integer encryption like Bank/Counter examples (convert boolean to int)
       const voteAsInt = voteValue ? 1 : 0
       input.add32(voteAsInt)
-      console.log("🔍 Voting Using add32() method (like Bank/Counter)")
-      console.log("🔍 Voting Vote value being encrypted:", voteValue, "as int:", voteAsInt)
       
       const encryptedResult = await input.encrypt()
-      
-      console.log("🔍 Voting Encryption result:", encryptedResult)
-      console.log("🔍 Voting Handles:", encryptedResult.handles)
-      console.log("🔍 Voting InputProof:", encryptedResult.inputProof)
-      console.log("🔍 Voting Vote value:", voteValue)
       
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
         throw new Error("Encryption failed - no handle returned")
@@ -906,17 +862,9 @@ const handleCastVote = async () => {
       
       // Validate handle length - should be 32 bytes for bytes32
       const handle = encryptedResult.handles[0]
-      console.log("🔍 Voting Handle details:")
-      console.log("  - Type:", typeof handle)
-      console.log("  - Length:", handle.length)
-      console.log("  - Is Uint8Array:", handle instanceof Uint8Array)
-      console.log("  - First 10 bytes:", Array.from(handle.slice(0, 10)))
-      console.log("  - Last 10 bytes:", Array.from(handle.slice(-10)))
-      console.log("  - Full handle as string:", handle.toString())
       
       if (handle.length !== 32) {
-        console.error(`❌ Voting Handle length is ${handle.length}, expected 32 bytes`)
-        console.error("❌ This will cause contract call to fail")
+        logger.error(`Handle length is ${handle.length}, expected 32 bytes`)
         throw new Error(`Invalid handle length: ${handle.length} bytes, expected 32 bytes for bytes32`)
       }
       
@@ -934,11 +882,8 @@ const handleCastVote = async () => {
       externalEuint32 = toHex(handle)
       inputProof = toHex(encryptedResult.inputProof)
       
-      console.log("🔍 Voting ExternalEuint32 (length:", externalEuint32.length, "):", externalEuint32)
-      console.log("🔍 Voting InputProof (length:", inputProof.length, "):", inputProof)
-      
     } catch (encryptError) {
-      console.error("❌ Voting Encryption error:", encryptError)
+      logger.error("Voting Encryption error", encryptError)
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
@@ -949,29 +894,14 @@ const handleCastVote = async () => {
     resetWrite()
     
     try {
-      // Check contract state before making the call
-      console.log("🔍 Voting Checking contract state before call...")
-      console.log("🔍 Voting Contract address:", votingConfig.address)
-      console.log("🔍 Voting Contract ABI length:", votingConfig.abi?.length)
-      
       // Check if session exists and is active
-      console.log("🔍 Voting About to check session info...")
       const sessionInfo = await refetchSessionInfo()
-      console.log("🔍 Voting Session info:", sessionInfo.data)
-      console.log("🔍 Voting Session info error:", sessionInfo.error)
       
       if (!sessionInfo.data) {
         throw new Error("Session does not exist")
       }
       
       const sessionData = sessionInfo.data as any
-      console.log("🔍 Voting Session data breakdown:")
-      console.log("  - Title:", sessionData[0])
-      console.log("  - Description:", sessionData[1])
-      console.log("  - Is Active:", sessionData[2])
-      console.log("  - End Time:", sessionData[3])
-      console.log("  - Current Time:", Math.floor(Date.now() / 1000))
-      console.log("  - Time Remaining:", Number(sessionData[3]) - Math.floor(Date.now() / 1000))
       
       if (!sessionData[2]) { // isActive
         throw new Error("Session is not active")
@@ -983,22 +913,10 @@ const handleCastVote = async () => {
       
       // Check if user has already voted
       const hasVotedResult = await refetchHasVoted()
-      console.log("🔍 Voting Has voted:", hasVotedResult.data)
       
       if (hasVotedResult.data) {
         throw new Error("User has already voted in this session")
       }
-      
-      // Check current block timestamp
-      console.log("🔍 Voting Current timestamp:", Math.floor(Date.now() / 1000))
-      console.log("🔍 Voting Session end time:", Number(sessionData[3]))
-      console.log("🔍 Voting Time remaining:", Number(sessionData[3]) - Math.floor(Date.now() / 1000), "seconds")
-      
-      // Validate parameters before contract call
-      console.log("🔍 Voting Contract call parameters:")
-      console.log("  - sessionId:", sessionIdNum, "(BigInt:", BigInt(sessionIdNum), ")")
-      console.log("  - externalEuint32:", externalEuint32, "(length:", externalEuint32.length, ")")
-      console.log("  - inputProof:", inputProof, "(length:", inputProof.length, ")")
       
       // Ensure externalEuint32 is exactly 66 characters (0x + 64 hex chars = 32 bytes)
       if (externalEuint32.length !== 66) {
@@ -1006,27 +924,8 @@ const handleCastVote = async () => {
       }
       
       // Write to contract with proper hex strings
-      console.log("🔍 Voting Calling contract with args:", [BigInt(sessionIdNum), externalEuint32, inputProof])
-      console.log("🔍 Voting Contract address:", votingConfig.address)
-      console.log("🔍 Voting Expected contract address: 0x64D0aF592CeA8DE7c67379353a0C4818dfc4e002")
-      console.log("🔍 Voting Address matches:", votingConfig.address === '0x64D0aF592CeA8DE7c67379353a0C4818dfc4e002')
-      console.log("🔍 Voting ABI for castVote:", votingConfig.abi?.find((item: any) => item.name === 'castVote'))
-      console.log("🔍 Voting Full ABI length:", votingConfig.abi?.length)
-      console.log("🔍 Voting ABI source check - looking for externalEuint32:", votingConfig.abi?.find((item: any) => item.name === 'castVote')?.inputs?.find((input: any) => input.internalType === 'externalEuint32'))
-      
-      // Additional debugging for transaction data
-      console.log("🔍 Voting Transaction data details:")
-      console.log("  - sessionId (BigInt):", BigInt(sessionIdNum))
-      console.log("  - externalEuint32 (hex):", externalEuint32)
-      console.log("  - externalEuint32 length:", externalEuint32.length)
-      console.log("  - inputProof (hex):", inputProof)
-      console.log("  - inputProof length:", inputProof.length)
-      console.log("  - gas limit:", 5000000n)
-      console.log("  - gas price:", 50000000000n)
-      
       try {
-        console.log("🔍 Voting About to call writeVoting...")
-        const txResult = await writeVoting({
+        await writeVoting({
           address: votingConfig.address as `0x${string}`,
           abi: votingConfig.abi as any,
           functionName: 'castVote',
@@ -1034,82 +933,42 @@ const handleCastVote = async () => {
         gas: 5000000n, // Further increased gas limit for FHE operations
         gasPrice: 50000000000n, // 50 gwei for Sepolia (further increased)
         })
-        
-        console.log("🔍 Voting Transaction submitted successfully:", txResult)
-        console.log("🔍 Voting Transaction result type:", typeof txResult)
-        console.log("🔍 Voting Transaction result value:", txResult)
-        
-        console.log("✅ Voting Transaction submitted - check pending state for confirmation")
-        console.log("✅ Voting Transaction should be visible on Sepolia explorer once confirmed")
       } catch (txError) {
-        console.error("❌ Voting Transaction error:", txError)
-        console.error("❌ Voting Error details:", {
-          message: txError instanceof Error ? txError.message : String(txError),
-          stack: txError instanceof Error ? txError.stack : undefined,
-          name: txError instanceof Error ? txError.name : undefined
-        })
+        logger.error("Voting Transaction error", txError)
         throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
       }
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
       // Wait for transaction to be confirmed
-      console.log("🔍 Voting Waiting for transaction confirmation...")
       await new Promise(resolve => setTimeout(resolve, 5000)) // Increased wait time
       
-      // Check transaction status
-      console.log("🔍 Voting Checking transaction status...")
-      console.log("🔍 Voting isWritePending:", isWritePending.value)
-      console.log("🔍 Voting isWriteSuccess:", isWriteSuccess.value)
-      console.log("🔍 Voting writeError:", writeError.value)
-      
-      // Additional status checks
-      console.log("🔍 Voting Additional status info:")
-      console.log("  - Pending state:", isWritePending.value)
-      console.log("  - Success state:", isWriteSuccess.value)
-      console.log("  - Error state:", writeError.value)
-      
       // Check if the transaction actually succeeded by checking the voting status
-      console.log("🔍 Voting Checking if vote was recorded...")
       await refetchHasVoted()
-      console.log("🔍 Voting Has voted after transaction:", hasVoted.value)
       
       // Check if transaction is still pending
       if (isWritePending.value) {
-        console.log("🔍 Voting Transaction is still pending - waiting longer...")
         message.value = "⏳ Transaction still pending, waiting longer..."
         await new Promise(resolve => setTimeout(resolve, 10000)) // Wait another 10 seconds
         await refetchHasVoted()
-        console.log("🔍 Voting Has voted after extended wait:", hasVoted.value)
       }
       
       if (hasVoted.value) {
         message.value = `✅ Voted ${voteChoice.value}! Vote recorded successfully.`
-        console.log("🔍 Voting Transaction completed successfully - vote was recorded")
       } else {
-        console.log("🔍 Voting Final status check:")
-        console.log("  - isWritePending:", isWritePending.value)
-        console.log("  - isWriteSuccess:", isWriteSuccess.value)
-        console.log("  - writeError:", writeError.value)
-        console.log("  - hasVoted:", hasVoted.value)
         message.value = `⚠️ Transaction submitted but vote not recorded. This suggests a contract execution issue.`
-        console.log("🔍 Voting Transaction may have failed silently - vote not recorded")
       }
       
       // Refresh voting status
     await refetchHasVoted()
       
     } catch (txError) {
-      console.error("Voting Transaction error:", txError)
-      console.error("Voting Transaction error details:", {
-        message: txError instanceof Error ? txError.message : String(txError),
-        stack: txError instanceof Error ? txError.stack : undefined
-      })
+      logger.error("Voting Transaction error", txError)
       throw new Error(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`)
     }
   } catch (error) {
     message.value = `❌ Vote casting failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Voting Vote casting error:", error)
+    logger.error("Voting Vote casting error", error)
   } finally {
     isProcessing.value = false
   }
@@ -1147,14 +1006,13 @@ const handleEndSession = async () => {
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     message.value = `✅ Voting session ${sessionIdNum} ended`
-    console.log("🔍 Voting Session end result:", txResult)
     
     // Refresh session info
     await refetchSessionInfo()
     
   } catch (error) {
     message.value = `❌ Session ending failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Voting Session ending error:", error)
+    logger.error("Voting Session ending error", error)
   } finally {
     isProcessing.value = false
   }
@@ -1181,24 +1039,15 @@ const handleDecryptResults = async () => {
       return
     }
 
-    console.log("🔍 Voting Starting signature-based decryption...")
-    console.log("🔍 Voting Results handles:", resultsHandles.value)
-    console.log("🔍 Voting About to call performDecrypt()...")
-    
     // Use the signature-based decryption
     await performDecrypt()
-    console.log("🔍 Voting performDecrypt() completed!")
     
     // Wait a moment for results to be processed
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    console.log("🔍 Voting Results after decryption:", results.value)
-    console.log("🔍 Voting Decrypted results computed:", decryptedResults.value)
-    
     // Check if we got valid results
     if (decryptedResults.value === null) {
-      console.warn("⚠️ Voting Decryption returned null - checking results object...")
-      console.log("🔍 Voting Full results object:", JSON.stringify(results.value, null, 2))
+      logger.warn("Voting Decryption returned null", { results: results.value })
     }
     
     // The decrypted results will be available in decryptedResults and automatically displayed
@@ -1206,7 +1055,7 @@ const handleDecryptResults = async () => {
     
   } catch (error) {
     message.value = `❌ Results decryption failed: ${error instanceof Error ? error.message : String(error)}`
-    console.error("Voting Results decryption error:", error)
+    logger.error("Voting Results decryption error", error)
   } finally {
     isProcessing.value = false
   }
@@ -1214,14 +1063,7 @@ const handleDecryptResults = async () => {
 
 // Manual function to fetch the results handles - ONLY after session has ended
 const fetchResultsHandles = async () => {
-  console.log("🔍 Voting fetchResultsHandles called")
-  console.log("🔍 Voting votingConfig.address:", votingConfig.address)
-  console.log("🔍 Voting isFHEVMConnected.value:", isFHEVMConnected.value)
-  console.log("🔍 Voting sessionId.value:", sessionId.value)
-  console.log("🔍 Voting Current user address:", address.value)
-  
   if (!votingConfig.address || !isFHEVMConnected.value) {
-    console.log("🔍 Voting Missing requirements for fetchResultsHandles")
     message.value = "⚠️ Missing requirements for fetching results"
     return
   }
@@ -1233,31 +1075,16 @@ const fetchResultsHandles = async () => {
   }
   
   try {
-    console.log("🔍 Voting Calling refetchEncryptedResults directly...")
-    console.log("🔍 Voting Current session ID for fetch:", sessionId.value)
-    console.log("🔍 Voting Session ID type:", typeof sessionId.value)
-    console.log("🔍 Voting Session ID as BigInt:", BigInt(sessionId.value))
-    
     // Check if session has ended first
     const sessionInfo = await refetchSessionInfo()
-    console.log("🔍 Voting Session info before fetching results:", sessionInfo.data)
     
     if (sessionInfo.data && (sessionInfo.data as any)[2] === true) { // isActive is true
       message.value = "⚠️ Session is still active - results only available after session ends"
-      console.log("🔍 Voting Session is still active, cannot get results yet")
       return
     }
     
-    console.log("🔍 Voting Session has ended, proceeding to fetch results")
-    
     // Call getEncryptedResults as a read function since it's now view
-    console.log("🔍 Voting Calling refetchEncryptedResults...")
     const result = await refetchEncryptedResults()
-    console.log("🔍 Voting refetchEncryptedResults result:", result)
-    console.log("🔍 Voting Result data:", result.data)
-    console.log("🔍 Voting Result data type:", typeof result.data)
-    console.log("🔍 Voting Result error:", result.error)
-    console.log("🔍 Voting Result data keys:", result.data && typeof result.data === 'object' ? Object.keys(result.data) : 'no data or not object')
     
     if (result.error) {
       throw new Error(`Contract call failed: ${result.error.message || result.error}`)
@@ -1267,9 +1094,6 @@ const fetchResultsHandles = async () => {
       throw new Error("Failed to fetch encrypted results - session may not exist or may not have ended")
     }
     
-    // Debug the data structure
-    console.log("🔍 Voting Raw result.data:", JSON.stringify(result.data, null, 2))
-    
     // getEncryptedResults returns a tuple with named fields: {yesVotes, noVotes, totalVotes}
     let yesVotesHandle: string, noVotesHandle: string, totalVotesHandle: string
     
@@ -1278,19 +1102,16 @@ const fetchResultsHandles = async () => {
       // Check if it's an array (tuple)
       if (Array.isArray(result.data) && result.data.length === 3) {
         [yesVotesHandle, noVotesHandle, totalVotesHandle] = result.data
-        console.log("🔍 Voting Data is array, extracted:", { yesVotesHandle, noVotesHandle, totalVotesHandle })
       }
       // Check if it's an object with named fields
       else if ((result.data as any).yesVotes !== undefined) {
         ({ yesVotes: yesVotesHandle, noVotes: noVotesHandle, totalVotes: totalVotesHandle } = result.data as { yesVotes: string, noVotes: string, totalVotes: string })
-        console.log("🔍 Voting Data is object with named fields, extracted:", { yesVotesHandle, noVotesHandle, totalVotesHandle })
       }
       // Check if it's an object with indexed fields
       else if ((result.data as any)[0] !== undefined) {
         yesVotesHandle = (result.data as any)[0]
         noVotesHandle = (result.data as any)[1] 
         totalVotesHandle = (result.data as any)[2]
-        console.log("🔍 Voting Data is object with indexed fields, extracted:", { yesVotesHandle, noVotesHandle, totalVotesHandle })
       }
       else {
         throw new Error("Unknown data structure returned from getEncryptedResults")
@@ -1299,24 +1120,10 @@ const fetchResultsHandles = async () => {
       throw new Error("Invalid data returned from getEncryptedResults")
     }
     
-    console.log("🔍 Voting Raw handles from contract for session", sessionId.value, ":", {
-      yesVotesHandle,
-      noVotesHandle, 
-      totalVotesHandle
-    })
-    
     // Check if handles are valid (not zero hash or undefined)
     if (!yesVotesHandle || !noVotesHandle || !totalVotesHandle || 
         yesVotesHandle === ethers.ZeroHash || noVotesHandle === ethers.ZeroHash || totalVotesHandle === ethers.ZeroHash) {
       message.value = "⚠️ No votes recorded for this session yet or session has no results"
-      console.log("🔍 Voting Invalid handles detected:", {
-        yesVotesHandle,
-        noVotesHandle,
-        totalVotesHandle,
-        yesVotesIsZero: yesVotesHandle === ethers.ZeroHash,
-        noVotesIsZero: noVotesHandle === ethers.ZeroHash,
-        totalVotesIsZero: totalVotesHandle === ethers.ZeroHash
-      })
       return
     }
     
@@ -1327,26 +1134,21 @@ const fetchResultsHandles = async () => {
       totalVotes: totalVotesHandle as string
     }
     
-    console.log("🔍 Voting Results handles stored for session", sessionId.value, ":", resultsHandles.value)
-    console.log("🔍 Voting Handles belong to current user:", address.value)
-    
     // Check if handles are actually different
     const allHandlesSame = yesVotesHandle === noVotesHandle && noVotesHandle === totalVotesHandle
     const allHandlesZero = yesVotesHandle === ethers.ZeroHash && noVotesHandle === ethers.ZeroHash && totalVotesHandle === ethers.ZeroHash
     
     if (allHandlesZero) {
-      console.log("🔍 Voting All handles are zero hash - session has no votes yet")
       message.value = `ℹ️ Session ${sessionId.value} has no votes yet. Cast some votes first!`
     } else if (allHandlesSame) {
-      console.warn("⚠️ Voting All handles are the same - this may indicate a problem with the contract call")
+      logger.warn("Voting All handles are the same - this may indicate a problem with the contract call")
       message.value = `⚠️ Warning: All handles are identical for session ${sessionId.value}. This may indicate the session has no votes or the contract call failed.`
     } else {
-      console.log("🔍 Voting Handles are different - session has votes")
       message.value = `✅ Results handles fetched successfully for session ${sessionId.value}!`
     }
     
   } catch (error) {
-    console.error("Failed to fetch results handles:", error)
+    logger.error("Failed to fetch results handles", error)
     message.value = `❌ Failed to fetch results: ${error instanceof Error ? error.message : String(error)}`
   }
 }
@@ -1359,13 +1161,12 @@ const getLatestSessionId = async () => {
       const latestId = Number(sessionCounter.value) - 1 // sessionCounter is the next ID, so latest is counter - 1
       sessionId.value = latestId.toString()
       message.value = `📊 Latest session ID: ${latestId}`
-      console.log("🔍 Voting Latest session ID:", latestId)
       
       // Auto-refresh session info for the new session
       await refreshSessionInfo()
     }
   } catch (error) {
-    console.error("Failed to get latest session ID:", error)
+    logger.error("Failed to get latest session ID", error)
     message.value = "❌ Failed to get latest session ID"
   }
 }
@@ -1373,7 +1174,6 @@ const getLatestSessionId = async () => {
 // Watch for session ID changes and auto-refresh session info
 watch(sessionId, async (newSessionId, oldSessionId) => {
   if (newSessionId !== oldSessionId && newSessionId && newSessionId !== "0") {
-    console.log("🔍 Voting Session ID changed from", oldSessionId, "to", newSessionId)
     await refreshSessionInfo()
   }
 }, { immediate: false })
@@ -1381,12 +1181,10 @@ watch(sessionId, async (newSessionId, oldSessionId) => {
 // Refresh session information
 const refreshSessionInfo = async () => {
   try {
-    console.log("🔍 Voting Refreshing session info for session:", sessionId.value)
     await refetchSessionInfo()
     await refetchHasVoted()
-    console.log("🔍 Voting Session info refreshed")
   } catch (error) {
-    console.error("Failed to refresh session info:", error)
+    logger.error("Failed to refresh session info", error)
     message.value = "❌ Failed to refresh session info"
   }
 }
@@ -1403,7 +1201,6 @@ const resetSession = () => {
     totalVotes: null
   }
   message.value = "🔄 Session reset"
-  console.log("🔍 Voting Session reset - all handles cleared")
 }
 
 // Auto-initialize on mount

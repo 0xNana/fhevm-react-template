@@ -1,7 +1,9 @@
 import { createInstance, SepoliaConfig } from '@zama-fhe/relayer-sdk/node'
-import type { FhevmInstance } from '@zama-fhe/relayer-sdk/bundle'
+import type { FhevmInstance } from '../../types.js'
 import type { FHEVMConfig, FHEVMEvents, EncryptionOptions, DecryptionOptions } from '../../types.js'
 import { FHEVMError, FHEVMNotInitializedError, FHEVMEncryptionError, FHEVMDecryptionError } from '../../types.js'
+import { ethers } from 'ethers'
+import type { Eip1193Provider } from 'ethers'
 
 /**
  * FHEVM Client with Real Instance - Node.js implementation
@@ -173,10 +175,12 @@ export class FHEVMClientWithInstance {
    */
   async refresh(): Promise<void> {
     // For real instances, we need to recreate
-    const newInstance = await createInstance({
+    const eip1193Provider = createEip1193Provider(this._config.rpcUrl, this._config.chainId)
+    const config = {
       ...SepoliaConfig,
-      network: this._config.rpcUrl
-    })
+      network: eip1193Provider
+    }
+    const newInstance = await createInstance(config)
     this._instance = newInstance
   }
 
@@ -198,6 +202,55 @@ export class FHEVMClientWithInstance {
 }
 
 /**
+ * Create an EIP-1193 compatible provider wrapper for Node.js
+ * This is required by the relayer SDK to interact with the blockchain
+ */
+function createEip1193Provider(rpcUrl: string, chainId: number): Eip1193Provider {
+  const provider = new ethers.JsonRpcProvider(rpcUrl)
+  
+  return {
+    request: async ({ method, params }: { method: string; params?: any[] }) => {
+      switch (method) {
+        case 'eth_chainId':
+          return `0x${chainId.toString(16)}`
+        case 'eth_accounts':
+          return []
+        case 'eth_requestAccounts':
+          return []
+        case 'eth_call':
+          if (!params || !params[0]) {
+            throw new Error('eth_call requires transaction object')
+          }
+          return await provider.call(params[0])
+        case 'eth_sendTransaction':
+          if (!params || !params[0]) {
+            throw new Error('eth_sendTransaction requires transaction object')
+          }
+          // Note: This is a simplified implementation
+          // In practice, you'd need a signer to send transactions
+          throw new Error('eth_sendTransaction not supported in read-only provider')
+        case 'eth_getBlockByNumber':
+        case 'eth_getBlockByHash':
+          if (!params) {
+            throw new Error(`${method} requires parameters`)
+          }
+          return await provider.send(method, params)
+        case 'eth_getTransactionReceipt':
+          if (!params || !params[0]) {
+            throw new Error('eth_getTransactionReceipt requires transaction hash')
+          }
+          return await provider.getTransactionReceipt(params[0])
+        default:
+          // Fallback to provider.send for other methods
+          return await provider.send(method, params || [])
+      }
+    },
+    on: () => {},
+    removeListener: () => {}
+  } as Eip1193Provider
+}
+
+/**
  * Create a real FHEVM client for Node.js using the relayer SDK
  */
 export async function createRealFHEVMClientForNode(
@@ -207,9 +260,13 @@ export async function createRealFHEVMClientForNode(
   try {
     console.log('[FHEVM] Creating real FHEVM instance...')
     
+    // Create EIP-1193 provider wrapper (required by relayer SDK)
+    const eip1193Provider = createEip1193Provider(config.rpcUrl, config.chainId)
+    
+    // Use SepoliaConfig from relayer SDK and override network with EIP-1193 provider
     const fhevmConfig = {
       ...SepoliaConfig,
-      network: config.rpcUrl
+      network: eip1193Provider
     }
     
     const fhevmInstance = await createInstance(fhevmConfig)

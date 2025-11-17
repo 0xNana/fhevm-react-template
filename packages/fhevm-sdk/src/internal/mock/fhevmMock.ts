@@ -34,5 +34,9 @@ export const fhevmMockCreateInstance = async (parameters: {
     verifyingContractAddressInputVerification:
       "0x812b06e1CDCE800494b79fFE4f925A504a9A9810",
   });
-  return instance;
+  // Type assertion: MockFhevmInstance is compatible with FhevmInstance at runtime
+  // The mock supports additional bit sizes (1, 512, 1024, 2048) but won't use them
+  // in practice, making this safe for development/testing scenarios
+  // Cast through 'unknown' first to satisfy TypeScript's strict type checking
+  return instance as unknown as FhevmInstance;
 };

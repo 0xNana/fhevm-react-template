@@ -1,6 +1,6 @@
 import { config } from 'dotenv'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
+import { dirname } from 'path'
 import { ethers } from 'ethers'
 
 const __filename = fileURLToPath(import.meta.url)

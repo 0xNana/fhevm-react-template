@@ -2,14 +2,14 @@
 pragma solidity ^0.8.24;
 
 import { FHE, euint32, ebool, externalEuint32, externalEbool } from "@fhevm/solidity/lib/FHE.sol";
-import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
+import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /**  
  * @title FHEVoting  
  * @dev A confidential voting contract using FHEVM  
  * @notice This contract allows users to vote on proposals with encrypted votes  
  */  
-contract FHEVoting is SepoliaConfig {  
+contract FHEVoting is ZamaEthereumConfig {  
     // Voting session structure  
     struct VotingSession {  
         string title;  

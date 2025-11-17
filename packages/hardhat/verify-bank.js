@@ -22,7 +22,7 @@ async function main() {
     // If verification fails, try with more detailed error info
     if (error.message.includes("bytecode")) {
       console.log("\n🔍 Bytecode mismatch detected. This could be due to:");
-      console.log("1. Network-specific configuration in SepoliaConfig");
+      console.log("1. Network-specific configuration in ZamaEthereumConfig");
       console.log("2. Different FHEVM library versions");
       console.log("3. Compiler settings mismatch");
       console.log("\n💡 Try manually verifying on Etherscan with the exact source code");

@@ -9,9 +9,7 @@ declare const process: {
 };
 
 export const CONTRACT_ADDRESSES = {
-  FHECounter: (typeof process !== 'undefined' && process.env.COUNTER_CONTRACT_ADDRESS) ? process.env.COUNTER_CONTRACT_ADDRESS : '0xaD920A4E9ACD84aA5F094e128b0d811eDB12F57F',
-  FHEVoting: (typeof process !== 'undefined' && process.env.VOTING_CONTRACT_ADDRESS) ? process.env.VOTING_CONTRACT_ADDRESS : '0x8eAf5350f6E26051f7902109BD3a8709abB6Fb14',
-  FHEBank: (typeof process !== 'undefined' && process.env.BANK_CONTRACT_ADDRESS) ? process.env.BANK_CONTRACT_ADDRESS : '0xA020287B1670453919C2f49e2e8c2C09B96101B8',
+  FHECounter: process.env.COUNTER_CONTRACT_ADDRESS,
+  FHEVoting: process.env.VOTING_CONTRACT_ADDRESS,
+  FHEBank: process.env.BANK_CONTRACT_ADDRESS
 } as const
-
-export type ContractName = keyof typeof CONTRACT_ADDRESSES
