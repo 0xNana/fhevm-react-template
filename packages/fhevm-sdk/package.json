@@ -46,10 +46,22 @@
     "encryption",
     "blockchain",
     "ethereum",
-    "sdk"
+    "sdk",
+    "homomorphic",
+    "privacy",
+    "web3"
   ],
   "author": "FHEVM Team",
   "license": "BSD-3-Clause-Clear",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xNana/fhevm-react-template.git",
+    "directory": "packages/fhevm-sdk"
+  },
+  "homepage": "https://github.com/0xNana/fhevm-react-template#readme",
+  "bugs": {
+    "url": "https://github.com/0xNana/fhevm-react-template/issues"
+  },
   "dependencies": {
     "ethers": "^6.13.4",
     "idb": "^8.0.3",
