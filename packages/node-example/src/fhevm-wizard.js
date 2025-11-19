@@ -32,23 +32,21 @@ const CONFIG = {
   chainId: 11155111
 }
 
-// Contract ABIs - Updated for FHEVM v0.9
-// Note: externalEuint64/externalEuint32 are encoded as bytes32 on-chain
+// Contract ABIs
 const BANK_ABI = [
   "function deposit(bytes32 amount, bytes calldata inputProof) public",
   "function withdraw(bytes32 amount, bytes calldata inputProof) public", 
   "function transfer(address to, bytes32 amount, bytes calldata inputProof) public",
   "function getEncryptedBalance(address account) public view returns (bytes32)",
-  "function getBalance(address account) public view returns (bytes32)",
   "function getEncryptedTotalSupply() public view returns (bytes32)"
 ]
 
 const VOTING_ABI = [
   "function createVotingSession(string memory title, string memory description, uint256 duration) external",
-  "function castVote(uint256 sessionId, bytes32 vote, bytes calldata inputProof) public",
+  "function castVote(uint256 sessionId, bytes32 encryptedVote, bytes calldata inputProof) external",
   "function endVotingSession(uint256 sessionId) external",
-  "function getCurrentVoteCounts(uint256 sessionId) public returns (bytes32 yesVotes, bytes32 noVotes, bytes32 totalVotes)",
-  "function getEncryptedResults(uint256 sessionId) public returns (bytes32 yesVotes, bytes32 noVotes, bytes32 totalVotes)",
+  "function getCurrentVoteCounts(uint256 sessionId) external returns (bytes32 yesVotes, bytes32 noVotes, bytes32 totalVotes)",
+  "function getEncryptedResults(uint256 sessionId) external returns (bytes32 yesVotes, bytes32 noVotes, bytes32 totalVotes)",
   "function getVotingSessionInfo(uint256 sessionId) external view returns (string memory, string memory, bool, uint256)",
   "function hasUserVoted(address user, uint256 sessionId) external view returns (bool)",
   "function sessionCounter() external view returns (uint256)"
@@ -279,8 +277,8 @@ class FHEVMWizard {
         // Estimate gas first
         console.log(chalk.gray('   Estimating gas...'))
         const gasEstimate = await contract.deposit.estimateGas(
-          depositExternalEuint64,
-          depositInputProof
+          depositEncryptedResult.handles[0],
+          depositEncryptedResult.inputProof
         )
         console.log(chalk.gray(`   Gas estimate: ${gasEstimate.toString()}`))
         
@@ -308,7 +306,7 @@ class FHEVMWizard {
           console.log(chalk.red(`   Contract call failed`))
           console.log(chalk.gray(`   Contract: ${CONFIG.bankContractAddress}`))
           console.log(chalk.gray(`   Function: deposit`))
-          console.log(chalk.gray(`   Args: [${depositExternalEuint64.substring(0, 20)}..., ${depositInputProof.substring(0, 20)}...]`))
+          console.log(chalk.gray(`   Args: [${depositEncryptedResult.handles[0].substring(0, 20)}..., ${depositEncryptedResult.inputProof.substring(0, 20)}...]`))
           
           // Try to get more details about the revert
           if (txError.receipt) {
@@ -321,7 +319,7 @@ class FHEVMWizard {
           const revertReason = await this.tryDecodeRevertReason(
             contract, 
             'deposit', 
-            [depositExternalEuint64, depositInputProof],
+            [depositEncryptedResult.handles[0], depositEncryptedResult.inputProof],
             txError
           )
           console.log(chalk.red(`   Revert reason: ${revertReason}`))
@@ -564,25 +562,18 @@ class FHEVMWizard {
         }
       ])
 
-      // Create encrypted vote using FHEVM pattern (32-bit for FHEVoting)
+      // Create encrypted vote
       console.log(chalk.cyan('\n🔐 Step 2: Creating encrypted vote...'))
       const spinner2 = ora('Encrypting vote...').start()
       
-      const voteInput = this.fhevmClient.getInstance().createEncryptedInput(CONFIG.votingContractAddress, userAddress)
-      voteInput.add32(voteChoice) // Voting uses 32-bit, voteChoice is 0 or 1
-      const encryptedVoteResult = await voteInput.encrypt()
+      const encryptedVote = await this.fhevmClient.encrypt(voteChoice, {
+        publicKey: userAddress,
+        contractAddress: CONFIG.votingContractAddress
+      })
       
-      if (!encryptedVoteResult?.handles?.[0] || !encryptedVoteResult.inputProof) {
+      if (!encryptedVote?.handles?.[0] || !encryptedVote.inputProof) {
         throw new Error('Vote encryption failed')
       }
-      
-      // Convert to hex strings like Vue/Next.js examples
-      const toHex = (data) => {
-        return '0x' + Array.from(data).map(b => b.toString(16).padStart(2, '0')).join('')
-      }
-      
-      const voteExternalEuint32 = toHex(encryptedVoteResult.handles[0])
-      const voteInputProof = toHex(encryptedVoteResult.inputProof)
       
       spinner2.succeed(chalk.green('Vote encrypted successfully'))
 
@@ -592,8 +583,8 @@ class FHEVMWizard {
       
       const voteTx = await contract.castVote(
         sessionId,
-        voteExternalEuint32,
-        voteInputProof,
+        encryptedVote.handles[0],
+        encryptedVote.inputProof,
         { gasLimit: 2000000 }
       )
       
@@ -756,25 +747,18 @@ class FHEVMWizard {
         }
       ])
 
-      // Create encrypted increment using FHEVM pattern (32-bit for FHECounter)
+      // Create encrypted increment
       console.log(chalk.cyan('\n🔐 Step 2: Creating encrypted increment...'))
       const spinner2 = ora('Encrypting increment amount...').start()
       
-      const incrementInput = this.fhevmClient.getInstance().createEncryptedInput(CONFIG.counterContractAddress, userAddress)
-      incrementInput.add32(incrementAmount) // Counter uses 32-bit
-      const incrementEncryptedResult = await incrementInput.encrypt()
+      const incrementEncryptedResult = await this.fhevmClient.encrypt(incrementAmount, {
+        publicKey: userAddress,
+        contractAddress: CONFIG.counterContractAddress
+      })
       
       if (!incrementEncryptedResult?.handles?.[0] || !incrementEncryptedResult.inputProof) {
         throw new Error('Increment encryption failed')
       }
-      
-      // Convert to hex strings like Vue/Next.js examples
-      const toHex = (data) => {
-        return '0x' + Array.from(data).map(b => b.toString(16).padStart(2, '0')).join('')
-      }
-      
-      const incrementExternalEuint32 = toHex(incrementEncryptedResult.handles[0])
-      const incrementInputProof = toHex(incrementEncryptedResult.inputProof)
       
       spinner2.succeed(chalk.green('Increment encrypted successfully'))
 
@@ -783,8 +767,8 @@ class FHEVMWizard {
       const spinner3 = ora('Sending increment transaction...').start()
       
       const incrementTx = await contract.increment(
-        incrementExternalEuint32,
-        incrementInputProof
+        incrementEncryptedResult.handles[0],
+        incrementEncryptedResult.inputProof
       )
       
       spinner3.succeed(chalk.green('Increment transaction sent'))
@@ -852,21 +836,18 @@ class FHEVMWizard {
           }
         ])
 
-        // Create encrypted decrement using FHEVM pattern (32-bit for FHECounter)
+        // Create encrypted decrement
         console.log(chalk.cyan('\n🔐 Step 6: Creating encrypted decrement...'))
         const spinner6 = ora('Encrypting decrement amount...').start()
         
-        const decrementInput = this.fhevmClient.getInstance().createEncryptedInput(CONFIG.counterContractAddress, userAddress)
-        decrementInput.add32(decrementAmount) // Counter uses 32-bit
-        const decrementEncryptedResult = await decrementInput.encrypt()
+        const decrementEncryptedResult = await this.fhevmClient.encrypt(decrementAmount, {
+          publicKey: userAddress,
+          contractAddress: CONFIG.counterContractAddress
+        })
         
         if (!decrementEncryptedResult?.handles?.[0] || !decrementEncryptedResult.inputProof) {
           throw new Error('Decrement encryption failed')
         }
-        
-        // Convert to hex strings (toHex already defined above)
-        const decrementExternalEuint32 = toHex(decrementEncryptedResult.handles[0])
-        const decrementInputProof = toHex(decrementEncryptedResult.inputProof)
         
         spinner6.succeed(chalk.green('Decrement encrypted successfully'))
 
@@ -875,8 +856,8 @@ class FHEVMWizard {
         const spinner7 = ora('Sending decrement transaction...').start()
         
         const decrementTx = await contract.decrement(
-          decrementExternalEuint32,
-          decrementInputProof
+          decrementEncryptedResult.handles[0],
+          decrementEncryptedResult.inputProof
         )
         
         spinner7.succeed(chalk.green('Decrement transaction sent'))

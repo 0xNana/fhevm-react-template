@@ -349,7 +349,7 @@ const balanceHandle = ref<string | null>(null)
 
 // Use useReadContract but only when we explicitly want to fetch
 const { data: fetchedBalance, refetch: refetchBalance, error: fetchError } = useReadContract({
-  address: bankConfig.address as `0x${string}`  ,
+  address: bankConfig.address,
   abi: bankConfig.abi as any,
   functionName: 'getEncryptedBalance',
   args: [address.value!],

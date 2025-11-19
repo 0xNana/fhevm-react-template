@@ -305,7 +305,7 @@ const countHandle = ref<string | null>(null)
 
 // Use useReadContract but only when we explicitly want to fetch
 const { data: fetchedHandle, refetch: refetchCount, error: fetchError } = useReadContract({
-  address: counterConfig.address as `0x${string}`,
+  address: counterConfig.address,
   abi: counterConfig.abi as any,
   functionName: 'getCount',
   query: {

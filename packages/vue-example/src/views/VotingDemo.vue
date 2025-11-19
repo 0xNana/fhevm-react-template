@@ -519,7 +519,7 @@ const sessionId = ref<string>("0")
 
 // Contract interactions - Session info and voting status
 const { data: sessionInfo, refetch: refetchSessionInfo } = useReadContract({
-  address: votingConfig.address as `0x${string}`,
+  address: votingConfig.address,
   abi: votingConfig.abi as any,
   functionName: 'getVotingSessionInfo',
   args: computed(() => [BigInt(sessionId.value)]),
@@ -530,7 +530,7 @@ const { data: sessionInfo, refetch: refetchSessionInfo } = useReadContract({
 })
 
 const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
-  address: votingConfig.address as `0x${string}`,
+  address: votingConfig.address,
   abi: votingConfig.abi as any,
   functionName: 'hasUserVoted',
   args: computed(() => [address.value!, BigInt(sessionId.value)]),
@@ -542,7 +542,7 @@ const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
 
 // For fetching encrypted results - use useReadContract since getEncryptedResults is now view
 const { data: encryptedResults, refetch: refetchEncryptedResults } = useReadContract({
-  address: votingConfig.address as `0x${string}`,
+  address: votingConfig.address,
   abi: votingConfig.abi as any,
   functionName: 'getEncryptedResults',
   args: computed(() => [BigInt(sessionId.value)]),
@@ -559,7 +559,7 @@ watch(() => [BigInt(sessionId.value)], () => {
 
 // For getting the current session counter
 const { data: sessionCounter, refetch: refetchSessionCounter } = useReadContract({
-  address: votingConfig.address as `0x${string}`,
+  address: votingConfig.address,
   abi: votingConfig.abi as any,
   functionName: 'sessionCounter',
   query: {
@@ -1038,7 +1038,7 @@ const handleDecryptResults = async () => {
       message.value = "⚠️ Cannot decrypt - missing dependencies (signer, instance, or requests)"
       return
     }
-
+    
     // Use the signature-based decryption
     await performDecrypt()
     

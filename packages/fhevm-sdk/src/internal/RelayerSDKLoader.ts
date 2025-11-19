@@ -56,33 +56,33 @@ export class RelayerSDKLoader {
           return;
         }
         
-          // Script tag exists but hasn't loaded yet - wait for it
-          let resolved = false;
-          let checkInterval: ReturnType<typeof setInterval> | null = null;
-          
-          const cleanup = () => {
-            if (checkInterval) clearInterval(checkInterval);
-            checkInterval = null;
-          };
-          
-          const checkAndResolve = () => {
-            if (resolved) return;
+        // Script tag exists but hasn't loaded yet - wait for it
+        let resolved = false;
+        let checkInterval: ReturnType<typeof setInterval> | null = null;
+        
+        const cleanup = () => {
+          if (checkInterval) clearInterval(checkInterval);
+          checkInterval = null;
+        };
+        
+        const checkAndResolve = () => {
+          if (resolved) return;
           // Check for both uppercase and lowercase versions
           const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
           if (sdk && isFhevmRelayerSDKType(sdk, this._trace)) {
             // Store it in the expected location for consistency
             (window as any).relayerSDK = sdk;
-              resolved = true;
-              cleanup();
-              resolve();
-            }
-          };
-          
-          checkInterval = setInterval(checkAndResolve, 50);
-          
-          // Also listen for load and error events
-          existingScript.addEventListener('load', () => {
-            checkAndResolve();
+            resolved = true;
+            cleanup();
+            resolve();
+          }
+        };
+        
+        checkInterval = setInterval(checkAndResolve, 50);
+        
+        // Also listen for load and error events
+        existingScript.addEventListener('load', () => {
+          checkAndResolve();
           if (!resolved) {
             const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
             if (!sdk || !isFhevmRelayerSDKType(sdk, this._trace)) {
@@ -94,37 +94,37 @@ export class RelayerSDKLoader {
                 )
               );
             }
-            }
-          });
-          
-          existingScript.addEventListener('error', () => {
-            if (!resolved) {
-              resolved = true;
-              cleanup();
+          }
+        });
+        
+        existingScript.addEventListener('error', () => {
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            reject(
+              new Error(
+                `RelayerSDKLoader: Failed to load SDK script from existing script tag.`
+              )
+            );
+          }
+        });
+        
+        // Timeout after 5 seconds (reduced from 10)
+        setTimeout(() => {
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
+            if (!sdk || !isFhevmRelayerSDKType(sdk, this._trace)) {
               reject(
                 new Error(
-                  `RelayerSDKLoader: Failed to load SDK script from existing script tag.`
+                  "RelayerSDKLoader: Timeout waiting for SDK script to load. This might be a network issue or the CDN might be blocked. Try copying WASM files locally using 'pnpm run copy-wasm'."
                 )
               );
             }
-          });
-          
-          // Timeout after 5 seconds (reduced from 10)
-          setTimeout(() => {
-            if (!resolved) {
-              resolved = true;
-              cleanup();
-            const sdk = (window as any).RelayerSDK || (window as any).relayerSDK;
-            if (!sdk || !isFhevmRelayerSDKType(sdk, this._trace)) {
-                reject(
-                  new Error(
-                    "RelayerSDKLoader: Timeout waiting for SDK script to load. This might be a network issue or the CDN might be blocked. Try copying WASM files locally using 'pnpm run copy-wasm'."
-                  )
-                );
-              }
-            }
-          }, 5000);
-          
+          }
+        }, 5000);
+        
         return;
       }
 
