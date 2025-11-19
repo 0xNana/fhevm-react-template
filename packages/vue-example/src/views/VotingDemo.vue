@@ -1,6 +1,5 @@
 <template>
   <div class="max-w-6xl mx-auto space-y-8">
-    <!-- Header -->
     <div class="text-center">
       <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
         🗳️ FHE Voting Demo
@@ -13,7 +12,6 @@
       </p>
     </div>
 
-    <!-- Wallet Connection -->
     <div v-if="!isConnected" class="card text-center">
       <div class="mb-4">
         <span class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 text-4xl">
@@ -32,9 +30,7 @@
       </button>
     </div>
 
-    <!-- Main Demo -->
     <div v-else class="space-y-6">
-      <!-- FHEVM Status -->
       <div class="card">
         <h3 class="text-xl font-bold mb-4 text-gray-900 border-b pb-2">🔧 Voting Status</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -77,9 +73,7 @@
         </div>
       </div>
 
-      <!-- Voting Operations -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Create Session -->
         <div class="card">
           <h3 class="text-xl font-bold mb-4 text-gray-900">📝 Create Voting Session</h3>
           <div class="space-y-4">
@@ -130,7 +124,6 @@
           </div>
         </div>
 
-        <!-- Cast Vote -->
         <div class="card">
           <h3 class="text-xl font-bold mb-4 text-gray-900">🗳️ Cast Vote</h3>
           <div class="space-y-4">
@@ -180,7 +173,6 @@
           </div>
         </div>
 
-        <!-- End Session -->
         <div class="card">
           <h3 class="text-xl font-bold mb-4 text-gray-900">🔚 End Session</h3>
           <div class="space-y-4">
@@ -220,7 +212,6 @@
           </div>
         </div>
 
-        <!-- View Results -->
         <div class="card">
           <h3 class="text-xl font-bold mb-4 text-gray-900">📊 View Results</h3>
           <div class="space-y-4">
@@ -263,7 +254,6 @@
         </div>
       </div>
 
-      <!-- Session Info -->
       <div v-if="sessionInfo" class="card">
         <h3 class="text-xl font-bold mb-4 text-gray-900 border-b pb-2">📋 Session Information</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -301,7 +291,6 @@
       </div>
 
 
-      <!-- Results Display -->
       <div v-if="decryptedResults" class="card">
         <h3 class="text-xl font-bold mb-4 text-gray-900 border-b pb-2">📊 Voting Results</h3>
         <div class="text-center">
@@ -345,7 +334,6 @@
         </div>
       </div>
 
-      <!-- Results -->
       <div class="card">
         <h3 class="text-xl font-bold mb-4 text-gray-900 border-b pb-2">📊 Voting Data</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -380,7 +368,6 @@
         </div>
       </div>
 
-      <!-- Messages -->
       <div v-if="message" class="card">
         <h3 class="text-xl font-bold mb-4 text-gray-900 border-b pb-2">💬 Messages</h3>
         <div class="bg-gray-50 p-4 rounded-lg">
@@ -388,19 +375,16 @@
         </div>
       </div>
 
-      <!-- Transaction Status -->
       <div v-if="isWritePending" class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
         <h3 class="font-bold text-blue-800 text-lg mb-2">⏳ Transaction Pending</h3>
         <p class="text-blue-700">Your transaction is being processed. Please wait...</p>
       </div>
 
-      <!-- Transaction Success -->
       <div v-if="isWriteSuccess" class="bg-green-50 border border-green-200 p-4 rounded-lg">
         <h3 class="font-bold text-green-800 text-lg mb-2">✅ Transaction Successful</h3>
         <p class="text-green-700">Your transaction has been confirmed on the blockchain!</p>
       </div>
 
-      <!-- Decryption Status -->
       <div v-if="decryptionMessage || decryptionError" class="card">
         <h3 class="text-xl font-bold mb-4 text-gray-900 border-b pb-2">🔓 Decryption Status</h3>
         <div class="space-y-3">
@@ -421,7 +405,6 @@
         </div>
       </div>
 
-      <!-- Errors -->
       <div v-if="hasError || encryptError || signatureError || writeError" class="bg-red-50 border border-red-200 p-4 rounded-lg">
         <h3 class="font-bold text-red-800 text-lg mb-2">❌ Errors</h3>
         <div class="space-y-2">
@@ -443,15 +426,12 @@ import { getContractConfig } from '@/contracts'
 import { useReadContract, useWriteContract } from '@wagmi/vue'
 import { ethers } from 'ethers'
 
-// Wallet
 const { isConnected, address, chainId, connect, connectors } = useWallet()
 
-// Create ethers signer from window.ethereum (same as contract operations use)
 const ethersSigner = computed(() => {
   if (!isConnected.value || !address.value) return undefined
   
   try {
-    // Use the same ethereum provider that Wagmi uses
     const provider = new ethers.BrowserProvider((window as any).ethereum)
     const signer = new ethers.JsonRpcSigner(provider, address.value)
     
@@ -462,10 +442,8 @@ const ethersSigner = computed(() => {
   }
 })
 
-// Contract configuration
 const votingConfig = getContractConfig('FHEVoting')
 
-// FHEVM Configuration
 const fhevmConfig = {
   rpcUrl: import.meta.env.VITE_RPC_URL || `https://sepolia.infura.io/v3/${import.meta.env.VITE_INFURA_API_KEY}`,
   chainId: Number(import.meta.env.VITE_CHAIN_ID) || 11155111,
@@ -474,9 +452,6 @@ const fhevmConfig = {
   }
 }
 
-// Debug info available via logger.debug if needed
-
-// FHEVM
 const { 
   state, 
   isReady: isFHEVMConnected, 
@@ -484,7 +459,6 @@ const {
   isInitializing: isLoading
 } = useFHEVM(fhevmConfig)
 
-// Computed properties for status display
 const statusMessage = computed(() => {
   switch (state.value.status) {
     case 'idle': return 'Initializing...'
@@ -504,11 +478,9 @@ const statusColor = computed(() => {
   }
 })
 
-// State for tracking operations
 const isEncrypting = ref(false)
 const encryptError = ref<Error | null>(null)
 
-// State
 const message = ref<string>("")
 const isProcessing = ref(false)
 const voteChoice = ref<"yes" | "no">("yes")
@@ -517,9 +489,8 @@ const sessionDescription = ref<string>("")
 const sessionDuration = ref<string>("3600") // 1 hour in seconds
 const sessionId = ref<string>("0")
 
-// Contract interactions - Session info and voting status
 const { data: sessionInfo, refetch: refetchSessionInfo } = useReadContract({
-  address: votingConfig.address,
+  address: computed(() => votingConfig.address as `0x${string}` | undefined),
   abi: votingConfig.abi as any,
   functionName: 'getVotingSessionInfo',
   args: computed(() => [BigInt(sessionId.value)]),
@@ -530,7 +501,7 @@ const { data: sessionInfo, refetch: refetchSessionInfo } = useReadContract({
 })
 
 const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
-  address: votingConfig.address,
+  address: computed(() => votingConfig.address as `0x${string}` | undefined),
   abi: votingConfig.abi as any,
   functionName: 'hasUserVoted',
   args: computed(() => [address.value!, BigInt(sessionId.value)]),
@@ -540,26 +511,22 @@ const { data: hasVoted, refetch: refetchHasVoted } = useReadContract({
   },
 })
 
-// For fetching encrypted results - use useReadContract since getEncryptedResults is now view
 const { data: encryptedResults, refetch: refetchEncryptedResults } = useReadContract({
-  address: votingConfig.address,
+  address: computed(() => votingConfig.address as `0x${string}` | undefined),
   abi: votingConfig.abi as any,
   functionName: 'getEncryptedResults',
   args: computed(() => [BigInt(sessionId.value)]),
   query: {
-    enabled: false, // We'll call it manually
+    enabled: false, 
     refetchOnWindowFocus: false,
   },
 })
 
-// Watch for session ID changes
 watch(() => [BigInt(sessionId.value)], () => {
-  // Session ID changed, will trigger refetch when needed
 }, { immediate: true })
 
-// For getting the current session counter
 const { data: sessionCounter, refetch: refetchSessionCounter } = useReadContract({
-  address: votingConfig.address,
+  address: computed(() => votingConfig.address as `0x${string}` | undefined),
   abi: votingConfig.abi as any,
   functionName: 'sessionCounter',
   query: {
@@ -571,7 +538,6 @@ const { data: sessionCounter, refetch: refetchSessionCounter } = useReadContract
 
 const { writeContract: writeVoting, isPending: isWritePending, error: writeError, isSuccess: isWriteSuccess, reset: resetWrite } = useWriteContract()
 
-// FHEVM Signature generation
 const { 
   generateSignature, 
   signature, 
@@ -579,27 +545,22 @@ const {
   error: signatureError 
 } = useFHEVMSignature(computed(() => state.value.instance), address)
 
-// In-memory storage for decryption signatures
 const fhevmDecryptionSignatureStorage = useInMemoryStorage()
 
-// Results decryption - for getEncryptedResults
 const resultsHandles = ref<{yesVotes: string | null, noVotes: string | null, totalVotes: string | null}>({
   yesVotes: null,
   noVotes: null,
   totalVotes: null
 })
 
-// Watch for session ID changes and reset results handles
 watch(sessionId, async (newSessionId, oldSessionId) => {
   if (newSessionId !== oldSessionId) {
-    // Always reset handles when session ID changes
     resultsHandles.value = {
       yesVotes: null,
       noVotes: null,
       totalVotes: null
     }
     
-    // Only auto-fetch if we have a valid session ID
     if (newSessionId && newSessionId !== "0") {
       try {
         await fetchResultsHandles()
@@ -610,7 +571,6 @@ watch(sessionId, async (newSessionId, oldSessionId) => {
   }
 }, { immediate: false })
 
-// Get latest results handles for the current session
 const getLatestResultsHandles = async () => {
   try {
     if (!sessionId.value || sessionId.value === "0") {
@@ -618,7 +578,6 @@ const getLatestResultsHandles = async () => {
       return
     }
     
-    // Force clear existing handles first
     resultsHandles.value = {
       yesVotes: null,
       noVotes: null,
@@ -634,7 +593,6 @@ const getLatestResultsHandles = async () => {
   }
 }
 
-// Force refresh results handles for current session
 const forceRefreshResultsHandles = async () => {
   try {
     if (!sessionId.value || sessionId.value === "0") {
@@ -642,14 +600,12 @@ const forceRefreshResultsHandles = async () => {
       return
     }
     
-    // Clear existing handles
     resultsHandles.value = {
       yesVotes: null,
       noVotes: null,
       totalVotes: null
     }
     
-    // Force refetch with current session ID
     await fetchResultsHandles()
     
     message.value = `✅ Results handles refreshed for session ${sessionId.value}!`
@@ -660,21 +616,17 @@ const forceRefreshResultsHandles = async () => {
   }
 }
 
-// Force clear all handles and reset state
 const forceClearAllHandles = () => {
-  // Clear all handles
   resultsHandles.value = {
     yesVotes: null,
     noVotes: null,
     totalVotes: null
   }
   
-  // Reset session ID to force fresh start
   sessionId.value = "0"
   message.value = "🔄 All handles cleared - select a new session"
 }
 
-// Check if session has votes
 const checkSessionHasVotes = () => {
   if (!resultsHandles.value.yesVotes || !resultsHandles.value.noVotes || !resultsHandles.value.totalVotes) {
     return false
@@ -690,7 +642,6 @@ const checkSessionHasVotes = () => {
   return !allZero && !allSame
 }
 
-// Decryption requests for signature-based decryption
 const requests = computed(() => {
   if (!votingConfig.address || !resultsHandles.value.yesVotes || !resultsHandles.value.noVotes || !resultsHandles.value.totalVotes) return undefined
   
@@ -708,7 +659,6 @@ const requests = computed(() => {
   return requests.length > 0 ? requests as any : undefined
 })
 
-// FHEVM Decryption using signature-based approach
 const { 
   canDecrypt,
   decrypt: performDecrypt,
@@ -723,15 +673,12 @@ const {
   requests: requests
 })
 
-// Manual reset function for now (until TypeScript recognizes the updated return type)
 const resetDecryptionState = () => {
-  // Reset the decryption state manually
   isDecryptingSDK.value = false
   decryptionError.value = null
   decryptionMessage.value = "Ready to decrypt"
 }
 
-// Extract decrypted results from results
 const decryptedResults = computed(() => {
   if (!resultsHandles.value.yesVotes || !resultsHandles.value.noVotes || !resultsHandles.value.totalVotes) {
     return null
@@ -764,7 +711,6 @@ const isDecrypted = computed(() => {
   return Boolean(resultsHandles.value.yesVotes && decryptedResults.value !== null)
 })
 
-// Handlers
 const handleCreateSession = async () => {
   if (!isConnected.value || !votingConfig.address) return
   
@@ -783,27 +729,23 @@ const handleCreateSession = async () => {
       return
     }
 
-    // Reset any previous write state
     resetWrite()
     
-    // Call the contract with proper parameters
     const txResult = await writeVoting({
       address: votingConfig.address as `0x${string}`,
       abi: votingConfig.abi as any,
       functionName: 'createVotingSession',
       args: [sessionTitle.value, sessionDescription.value, BigInt(duration)],
-      gas: 3000000n, // Increased gas limit for FHE operations
-      gasPrice: 30000000000n, // 30 gwei for Sepolia (increased)
+      gas: 3000000n, 
+      gasPrice: 30000000000n, 
     })
     
     message.value = "⏳ Waiting for transaction confirmation..."
     
-    // Wait for transaction to be confirmed
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     message.value = `✅ Voting session created: "${sessionTitle.value}"`
     
-    // Refresh session info
     await refetchSessionInfo()
     
   } catch (error) {
@@ -827,26 +769,21 @@ const handleCastVote = async () => {
       return
     }
 
-    // 1. Ensure FHEVM instance is ready
     if (!state.value.instance) {
       throw new Error("FHEVM instance not ready")
     }
     
-    // 2. Create proper externalEuint32 with proof for FHEVoting.sol using correct FHEVM pattern
     message.value = "🔐 Creating encrypted vote..."
     
     let externalEuint32: string
     let inputProof: string
     
     try {
-      // Use the correct FHEVM pattern - create encrypted input for boolean
       const userAddress = address.value!
       const input = state.value.instance.createEncryptedInput(votingConfig.address, userAddress)
       
-      // Encrypt boolean value (true for yes, false for no)
       const voteValue = voteChoice.value === "yes"
       
-      // Use integer encryption like Bank/Counter examples (convert boolean to int)
       const voteAsInt = voteValue ? 1 : 0
       input.add32(voteAsInt)
       
@@ -860,7 +797,6 @@ const handleCastVote = async () => {
         throw new Error("Encryption failed - no inputProof returned")
       }
       
-      // Validate handle length - should be 32 bytes for bytes32
       const handle = encryptedResult.handles[0]
       
       if (handle.length !== 32) {
@@ -868,10 +804,8 @@ const handleCastVote = async () => {
         throw new Error(`Invalid handle length: ${handle.length} bytes, expected 32 bytes for bytes32`)
       }
       
-      // 3. Convert FHEVM objects to proper format
       message.value = `🔐 Encrypted vote: ${handle.toString().slice(0, 20)}...`
       
-      // Convert Uint8Array to hex string for bytes32 and bytes
       const toHex = (data: Uint8Array) => {
         if (!data || !Array.isArray(Array.from(data))) {
           throw new Error("Invalid data for hex conversion")
@@ -887,14 +821,11 @@ const handleCastVote = async () => {
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
-    // 4. Call contract with proper hex format
     message.value = "📝 Signing transaction..."
     
-    // Reset any previous write state
     resetWrite()
     
     try {
-      // Check if session exists and is active
       const sessionInfo = await refetchSessionInfo()
       
       if (!sessionInfo.data) {
@@ -903,35 +834,32 @@ const handleCastVote = async () => {
       
       const sessionData = sessionInfo.data as any
       
-      if (!sessionData[2]) { // isActive
+      if (!sessionData[2]) { 
         throw new Error("Session is not active")
       }
       
-      if (Date.now() / 1000 > Number(sessionData[3])) { // endTime
+      if (Date.now() / 1000 > Number(sessionData[3])) { 
         throw new Error("Session has expired")
       }
       
-      // Check if user has already voted
       const hasVotedResult = await refetchHasVoted()
       
       if (hasVotedResult.data) {
         throw new Error("User has already voted in this session")
       }
       
-      // Ensure externalEuint32 is exactly 66 characters (0x + 64 hex chars = 32 bytes)
       if (externalEuint32.length !== 66) {
         throw new Error(`Invalid externalEuint32 length: ${externalEuint32.length}, expected 66 (0x + 64 hex chars)`)
       }
       
-      // Write to contract with proper hex strings
       try {
         await writeVoting({
           address: votingConfig.address as `0x${string}`,
           abi: votingConfig.abi as any,
           functionName: 'castVote',
-        args: [BigInt(sessionIdNum), externalEuint32, inputProof], // uint256 sessionId, externalEuint32 vote, bytes calldata inputProof
-        gas: 5000000n, // Further increased gas limit for FHE operations
-        gasPrice: 50000000000n, // 50 gwei for Sepolia (further increased)
+        args: [BigInt(sessionIdNum), externalEuint32, inputProof], 
+        gas: 5000000n, 
+        gasPrice: 50000000000n, 
         })
       } catch (txError) {
         logger.error("Voting Transaction error", txError)
@@ -940,16 +868,13 @@ const handleCastVote = async () => {
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
-      // Wait for transaction to be confirmed
-      await new Promise(resolve => setTimeout(resolve, 5000)) // Increased wait time
+      await new Promise(resolve => setTimeout(resolve, 5000)) 
       
-      // Check if the transaction actually succeeded by checking the voting status
       await refetchHasVoted()
       
-      // Check if transaction is still pending
       if (isWritePending.value) {
         message.value = "⏳ Transaction still pending, waiting longer..."
-        await new Promise(resolve => setTimeout(resolve, 10000)) // Wait another 10 seconds
+        await new Promise(resolve => setTimeout(resolve, 10000)) 
         await refetchHasVoted()
       }
       
@@ -959,7 +884,6 @@ const handleCastVote = async () => {
         message.value = `⚠️ Transaction submitted but vote not recorded. This suggests a contract execution issue.`
       }
       
-      // Refresh voting status
     await refetchHasVoted()
       
     } catch (txError) {
@@ -987,27 +911,23 @@ const handleEndSession = async () => {
       return
     }
 
-    // Reset any previous write state
     resetWrite()
     
-    // Call the contract with proper parameters
     const txResult = await writeVoting({
       address: votingConfig.address as `0x${string}`,
       abi: votingConfig.abi as any,
       functionName: 'endVotingSession',
       args: [BigInt(sessionIdNum)],
-      gas: 3000000n, // Increased gas limit for FHE operations
-      gasPrice: 30000000000n, // 30 gwei for Sepolia (increased)
+      gas: 3000000n, 
+      gasPrice: 30000000000n, 
     })
     
     message.value = "⏳ Waiting for transaction confirmation..."
     
-    // Wait for transaction to be confirmed
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     message.value = `✅ Voting session ${sessionIdNum} ended`
     
-    // Refresh session info
     await refetchSessionInfo()
     
   } catch (error) {
@@ -1025,13 +945,11 @@ const handleDecryptResults = async () => {
   message.value = "📊 Decrypting voting results..."
   
   try {
-    // Check if we have results handles
     if (!resultsHandles.value.yesVotes || !resultsHandles.value.noVotes || !resultsHandles.value.totalVotes) {
       message.value = "⚠️ No results handles available. Please fetch results first."
       return
     }
 
-    // Now decrypt the results using signature-based decryption
     message.value = "🔓 Decrypting results..."
     
     if (!canDecrypt.value) {
@@ -1039,18 +957,14 @@ const handleDecryptResults = async () => {
       return
     }
     
-    // Use the signature-based decryption
     await performDecrypt()
     
-    // Wait a moment for results to be processed
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    // Check if we got valid results
     if (decryptedResults.value === null) {
       logger.warn("Voting Decryption returned null", { results: results.value })
     }
     
-    // The decrypted results will be available in decryptedResults and automatically displayed
     message.value = `✅ Voting results decrypted! Yes: ${decryptedResults.value?.yesVotes || 0}, No: ${decryptedResults.value?.noVotes || 0}, Total: ${decryptedResults.value?.totalVotes || 0}`
     
   } catch (error) {
@@ -1061,7 +975,6 @@ const handleDecryptResults = async () => {
   }
 }
 
-// Manual function to fetch the results handles - ONLY after session has ended
 const fetchResultsHandles = async () => {
   if (!votingConfig.address || !isFHEVMConnected.value) {
     message.value = "⚠️ Missing requirements for fetching results"
@@ -1075,15 +988,13 @@ const fetchResultsHandles = async () => {
   }
   
   try {
-    // Check if session has ended first
     const sessionInfo = await refetchSessionInfo()
     
-    if (sessionInfo.data && (sessionInfo.data as any)[2] === true) { // isActive is true
+    if (sessionInfo.data && (sessionInfo.data as any)[2] === true) { 
       message.value = "⚠️ Session is still active - results only available after session ends"
       return
     }
     
-    // Call getEncryptedResults as a read function since it's now view
     const result = await refetchEncryptedResults()
     
     if (result.error) {
@@ -1094,20 +1005,15 @@ const fetchResultsHandles = async () => {
       throw new Error("Failed to fetch encrypted results - session may not exist or may not have ended")
     }
     
-    // getEncryptedResults returns a tuple with named fields: {yesVotes, noVotes, totalVotes}
     let yesVotesHandle: string, noVotesHandle: string, totalVotesHandle: string
     
-    // Try different data structures
     if (result.data && typeof result.data === 'object') {
-      // Check if it's an array (tuple)
       if (Array.isArray(result.data) && result.data.length === 3) {
         [yesVotesHandle, noVotesHandle, totalVotesHandle] = result.data
       }
-      // Check if it's an object with named fields
       else if ((result.data as any).yesVotes !== undefined) {
         ({ yesVotes: yesVotesHandle, noVotes: noVotesHandle, totalVotes: totalVotesHandle } = result.data as { yesVotes: string, noVotes: string, totalVotes: string })
       }
-      // Check if it's an object with indexed fields
       else if ((result.data as any)[0] !== undefined) {
         yesVotesHandle = (result.data as any)[0]
         noVotesHandle = (result.data as any)[1] 
@@ -1120,21 +1026,18 @@ const fetchResultsHandles = async () => {
       throw new Error("Invalid data returned from getEncryptedResults")
     }
     
-    // Check if handles are valid (not zero hash or undefined)
     if (!yesVotesHandle || !noVotesHandle || !totalVotesHandle || 
         yesVotesHandle === ethers.ZeroHash || noVotesHandle === ethers.ZeroHash || totalVotesHandle === ethers.ZeroHash) {
       message.value = "⚠️ No votes recorded for this session yet or session has no results"
       return
     }
     
-    // Store the handles for decryption
     resultsHandles.value = {
       yesVotes: yesVotesHandle as string,
       noVotes: noVotesHandle as string,
       totalVotes: totalVotesHandle as string
     }
     
-    // Check if handles are actually different
     const allHandlesSame = yesVotesHandle === noVotesHandle && noVotesHandle === totalVotesHandle
     const allHandlesZero = yesVotesHandle === ethers.ZeroHash && noVotesHandle === ethers.ZeroHash && totalVotesHandle === ethers.ZeroHash
     
@@ -1153,16 +1056,14 @@ const fetchResultsHandles = async () => {
   }
 }
 
-// Get the latest session ID
 const getLatestSessionId = async () => {
   try {
     await refetchSessionCounter()
     if (sessionCounter.value !== undefined) {
-      const latestId = Number(sessionCounter.value) - 1 // sessionCounter is the next ID, so latest is counter - 1
+      const latestId = Number(sessionCounter.value) - 1 
       sessionId.value = latestId.toString()
       message.value = `📊 Latest session ID: ${latestId}`
       
-      // Auto-refresh session info for the new session
       await refreshSessionInfo()
     }
   } catch (error) {
@@ -1171,14 +1072,12 @@ const getLatestSessionId = async () => {
   }
 }
 
-// Watch for session ID changes and auto-refresh session info
 watch(sessionId, async (newSessionId, oldSessionId) => {
   if (newSessionId !== oldSessionId && newSessionId && newSessionId !== "0") {
     await refreshSessionInfo()
   }
 }, { immediate: false })
 
-// Refresh session information
 const refreshSessionInfo = async () => {
   try {
     await refetchSessionInfo()
@@ -1189,7 +1088,6 @@ const refreshSessionInfo = async () => {
   }
 }
 
-// Reset session functionality
 const resetSession = () => {
   sessionId.value = "0"
   sessionTitle.value = ""
@@ -1203,8 +1101,6 @@ const resetSession = () => {
   message.value = "🔄 Session reset"
 }
 
-// Auto-initialize on mount
 onMounted(() => {
-  // FHEVM will auto-initialize through the composable
 })
 </script>

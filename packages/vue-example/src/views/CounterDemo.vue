@@ -300,35 +300,30 @@ const statusColor = computed(() => {
   }
 })
 
-// Contract interactions - Only read count handle after user has performed an operation
 const countHandle = ref<string | null>(null)
 
-// Use useReadContract but only when we explicitly want to fetch
 const { data: fetchedHandle, refetch: refetchCount, error: fetchError } = useReadContract({
-  address: counterConfig.address,
+  address: computed(() => counterConfig.address as `0x${string}` | undefined),
   abi: counterConfig.abi as any,
   functionName: 'getCount',
   query: {
-    enabled: false, // Always disabled initially
+    enabled: false, 
     refetchOnWindowFocus: false,
   },
 })
 
-// Watch for changes in fetchedHandle and update countHandle
 watch(fetchedHandle, (newHandle) => {
   if (newHandle) {
     countHandle.value = newHandle as string
   }
 })
 
-// Watch for fetch errors
 watch(fetchError, (error) => {
   if (error) {
     logger.error("Fetch error", error)
   }
 })
 
-// Manual function to fetch the handle - ONLY after user operations
 const fetchCountHandle = async () => {
   if (!counterConfig.address || !isFHEVMConnected.value) {
     return
@@ -349,7 +344,6 @@ const {
   reset: resetWrite
 } = useWriteContract()
 
-// FHEVM Signature generation
 const { 
   generateSignature, 
   signature, 
@@ -357,16 +351,13 @@ const {
   error: signatureError 
 } = useFHEVMSignature(computed(() => state.value.instance), address)
 
-// In-memory storage for decryption signatures
 const fhevmDecryptionSignatureStorage = useInMemoryStorage()
 
-// Decryption requests for signature-based decryption
 const requests = computed(() => {
   if (!counterConfig.address || !countHandle.value || countHandle.value === ethers.ZeroHash) return undefined
   return [{ handle: countHandle.value.toString(), contractAddress: counterConfig.address as `0x${string}` }] as const
 })
 
-// FHEVM Decryption using signature-based approach
 const {
   canDecrypt,
   decrypt: performDecrypt,
@@ -381,15 +372,12 @@ const {
   requests: requests
 })
 
-// Manual reset function for now (until TypeScript recognizes the updated return type)
 const resetDecryptionState = () => {
-  // Reset the decryption state manually
   isDecryptingSDK.value = false
   decryptionError.value = null
   decryptionMessage.value = "Ready to decrypt"
 }
 
-// Debug dependencies - watch for changes
 watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
   logger.debug('Dependencies check', {
     instance: !!state.value.instance,
@@ -400,7 +388,6 @@ watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
     requests: requests.value,
     requestsLength: requests.value?.length,
     canDecrypt: canDecrypt.value,
-    // Check each dependency individually
     missingDependencies: {
       instance: !state.value.instance ? 'MISSING' : 'OK',
       signer: !ethersSigner.value ? 'MISSING' : 'OK', 
@@ -409,15 +396,12 @@ watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
   })
 }, { immediate: true })
 
-// State for tracking operations
 const isEncrypting = ref(false)
 const encryptError = ref<Error | null>(null)
 
-// State
 const message = ref<string>("")
 const isProcessing = ref(false)
 
-// Extract decrypted value from results
 const decryptedValue = computed(() => {
   if (!countHandle.value) {
     return null
@@ -441,40 +425,32 @@ const isDecrypted = computed(() => {
   return Boolean(countHandle.value && decryptedValue.value !== null)
 })
 
-// Core Functions - Fixed for Proper FHEVM Contract Interaction
 const handleIncrement = async () => {
   if (!isConnected.value || !counterConfig.address) return
   
   isProcessing.value = true
   message.value = "🔢 Incrementing counter..."
   
-  // Clear previous decrypted value since we're making a new transaction
-  // The decrypted value will be cleared automatically when the handle changes
-  
   try {
-    // 0. Check network first
     const expectedChainId = 11155111 // Sepolia
     if (chainId.value !== expectedChainId) {
       message.value = `⚠️ Wrong network! Please switch to Sepolia (Chain ID: ${expectedChainId}). Current: ${chainId.value}`
       return
     }
     
-    // 1. Ensure FHEVM instance is ready
     if (!state.value.instance) {
       throw new Error("FHEVM instance not ready")
     }
     
-    // 2. Create proper externalEuint32 with proof for FHECounter.sol using correct FHEVM pattern
     message.value = "🔐 Creating encrypted input..."
     
     let externalEuint32: string
     let inputProof: string
     
     try {
-      // Use the correct FHEVM pattern from React example
       const userAddress = address.value!
       const input = state.value.instance.createEncryptedInput(counterConfig.address, userAddress)
-      input.add32(1) // Increment by 1
+      input.add32(1) 
       const encryptedResult = await input.encrypt()
       
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
@@ -485,10 +461,8 @@ const handleIncrement = async () => {
         throw new Error("Encryption failed - no inputProof returned")
       }
       
-      // 3. Convert FHEVM objects to proper format using buildParamsFromAbi logic
       message.value = `🔐 Encrypted: ${encryptedResult.handles[0].toString().slice(0, 20)}...`
       
-      // Convert Uint8Array to hex string for bytes32 and bytes
       const toHex = (data: Uint8Array) => {
         if (!data || !Array.isArray(Array.from(data))) {
           throw new Error("Invalid data for hex conversion")
@@ -504,29 +478,24 @@ const handleIncrement = async () => {
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
-    // 4. Call contract with proper hex format
     message.value = "📝 Signing transaction..."
     
-    // Reset any previous write state
     resetWrite()
     
     try {
-      // Write to contract with proper hex strings
       const txResult = await writeCounter({
         address: counterConfig.address as `0x${string}`,
         abi: counterConfig.abi as any,
         functionName: 'increment',
-        args: [externalEuint32, inputProof], // Hex strings for bytes32 and bytes
+        args: [externalEuint32, inputProof], 
       })
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
-      // Wait for transaction to be confirmed
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Increment completed! Refreshing..."
       
-      // Now fetch the handle after the transaction is confirmed
       await fetchCountHandle()
       
     } catch (txError) {
@@ -547,26 +516,20 @@ const handleDecrement = async () => {
   isProcessing.value = true
   message.value = "➖ Decrementing counter..."
   
-  // Clear previous decrypted value since we're making a new transaction
-  // The decrypted value will be cleared automatically when the handle changes
-  
   try {
-    // 1. Ensure FHEVM instance is ready
     if (!state.value.instance) {
       throw new Error("FHEVM instance not ready")
     }
     
-    // 2. Create proper externalEuint32 with proof for FHECounter.sol using correct FHEVM pattern
     message.value = "🔐 Creating encrypted input..."
     
     let externalEuint32: string
     let inputProof: string
     
     try {
-      // Use the correct FHEVM pattern from React example
       const userAddress = address.value!
       const input = state.value.instance.createEncryptedInput(counterConfig.address, userAddress)
-      input.add32(1) // Decrement by 1 (contract will subtract this value)
+      input.add32(1) 
       const encryptedResult = await input.encrypt()
       
       if (!encryptedResult || !encryptedResult.handles || !encryptedResult.handles[0]) {
@@ -577,10 +540,8 @@ const handleDecrement = async () => {
         throw new Error("Encryption failed - no inputProof returned")
       }
       
-      // 3. Convert FHEVM objects to proper format using buildParamsFromAbi logic
-      message.value = `🔐 Encrypted: ${encryptedResult.handles[0].toString().slice(0, 20)}...`
+        message.value = `🔐 Encrypted: ${encryptedResult.handles[0].toString().slice(0, 20)}...`
       
-      // Convert Uint8Array to hex string for bytes32 and bytes
       const toHex = (data: Uint8Array) => {
         if (!data || !Array.isArray(Array.from(data))) {
           throw new Error("Invalid data for hex conversion")
@@ -596,29 +557,24 @@ const handleDecrement = async () => {
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
-    // 4. Call contract with proper hex format
     message.value = "📝 Signing transaction..."
     
-    // Reset any previous write state
     resetWrite()
     
     try {
-      // Write to contract with proper hex strings
       const txResult = await writeCounter({
         address: counterConfig.address as `0x${string}`,
         abi: counterConfig.abi as any,
         functionName: 'decrement',
-        args: [externalEuint32, inputProof], // Hex strings for bytes32 and bytes
+        args: [externalEuint32, inputProof], 
       })
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
-      // Wait for transaction to be confirmed
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Decrement completed! Refreshing..."
       
-      // Now fetch the handle after the transaction is confirmed
       await fetchCountHandle()
       
     } catch (txError) {
@@ -645,18 +601,14 @@ const handleDecrypt = async () => {
   }
 
   try {
-    // Use the signature-based decryption
     await performDecrypt()
     
-    // Wait a moment for results to be processed
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    // Check if we got a valid result
     if (decryptedValue.value === null) {
       logger.warn("Decryption returned null", { results: results.value })
     }
     
-    // The decrypted value will be available in results and automatically displayed
     message.value = `✅ Decryption completed! Value: ${decryptedValue.value}`
     
   } catch (error) {
@@ -665,8 +617,6 @@ const handleDecrypt = async () => {
   }
 }
 
-// Auto-initialize on mount
 onMounted(() => {
-  // FHEVM will auto-initialize through the composable
 })
 </script>

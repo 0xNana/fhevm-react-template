@@ -283,15 +283,12 @@ import { getContractConfig } from '@/contracts'
 import { useReadContract, useWriteContract } from '@wagmi/vue'
 import { ethers } from 'ethers'
 
-// Wallet
 const { isConnected, address, chainId, connect, connectors } = useWallet()
 
-// Create ethers signer from window.ethereum (same as contract operations use)
 const ethersSigner = computed(() => {
   if (!isConnected.value || !address.value) return undefined
   
   try {
-    // Use the same ethereum provider that Wagmi uses
     const provider = new ethers.BrowserProvider((window as any).ethereum)
     const signer = new ethers.JsonRpcSigner(provider, address.value)
     
@@ -302,10 +299,8 @@ const ethersSigner = computed(() => {
   }
 })
 
-// Contract configuration
 const bankConfig = getContractConfig('FHEBank')
 
-// FHEVM Configuration
 const fhevmConfig = {
   rpcUrl: import.meta.env.VITE_RPC_URL || `https://sepolia.infura.io/v3/${import.meta.env.VITE_INFURA_API_KEY}`,
   chainId: Number(import.meta.env.VITE_CHAIN_ID) || 11155111,
@@ -314,9 +309,6 @@ const fhevmConfig = {
   }
 }
 
-// Debug info available via logger.debug if needed
-
-// FHEVM
 const { 
   state, 
   isReady: isFHEVMConnected, 
@@ -324,7 +316,6 @@ const {
   isInitializing: isLoading
 } = useFHEVM(fhevmConfig)
 
-// Computed properties for status display
 const statusMessage = computed(() => {
   switch (state.value.status) {
     case 'idle': return 'Initializing...'
@@ -344,36 +335,31 @@ const statusColor = computed(() => {
   }
 })
 
-// Contract interactions - Only read balance handle after user has performed an operation
 const balanceHandle = ref<string | null>(null)
 
-// Use useReadContract but only when we explicitly want to fetch
 const { data: fetchedBalance, refetch: refetchBalance, error: fetchError } = useReadContract({
-  address: bankConfig.address,
+  address: computed(() => bankConfig.address as `0x${string}` | undefined),
   abi: bankConfig.abi as any,
   functionName: 'getEncryptedBalance',
   args: [address.value!],
   query: {
-    enabled: false, // Always disabled initially
+    enabled: false, 
     refetchOnWindowFocus: false,
   },
 })
 
-// Watch for changes in fetchedBalance and update balanceHandle
 watch(fetchedBalance, (newBalance) => {
   if (newBalance) {
     balanceHandle.value = newBalance as string
   }
 })
 
-// Watch for fetch errors
 watch(fetchError, (error) => {
   if (error) {
     logger.error("Bank Fetch error", error)
   }
 })
 
-// Manual function to fetch the balance - ONLY after user operations
 const fetchBalanceHandle = async () => {
   if (!bankConfig.address || !isFHEVMConnected.value || !address.value) {
     return
@@ -394,24 +380,19 @@ const {
   reset: resetWrite
 } = useWriteContract()
 
-// FHEVM Signature generation
 const { 
   generateSignature, 
   signature, 
   isSigning, 
   error: signatureError 
 } = useFHEVMSignature(computed(() => state.value.instance), address)
-
-// In-memory storage for decryption signatures
 const fhevmDecryptionSignatureStorage = useInMemoryStorage()
 
-// Decryption requests for signature-based decryption
 const requests = computed(() => {
   if (!bankConfig.address || !balanceHandle.value || balanceHandle.value === ethers.ZeroHash) return undefined
   return [{ handle: balanceHandle.value.toString(), contractAddress: bankConfig.address as `0x${string}` }] as const
 })
 
-// FHEVM Decryption using signature-based approach
 const { 
   canDecrypt,
   decrypt: performDecrypt,
@@ -426,15 +407,12 @@ const {
   requests: requests
 })
 
-// Manual reset function for now (until TypeScript recognizes the updated return type)
 const resetDecryptionState = () => {
-  // Reset the decryption state manually
   isDecryptingSDK.value = false
   decryptionError.value = null
   decryptionMessage.value = "Ready to decrypt"
 }
 
-// Debug dependencies - watch for changes
 watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
   logger.debug('Bank Dependencies check', {
     instance: !!state.value.instance,
@@ -445,7 +423,6 @@ watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
     requests: requests.value,
     requestsLength: requests.value?.length,
     canDecrypt: canDecrypt.value,
-    // Check each dependency individually
     missingDependencies: {
       instance: !state.value.instance ? 'MISSING' : 'OK',
       signer: !ethersSigner.value ? 'MISSING' : 'OK', 
@@ -454,17 +431,14 @@ watch([() => state.value.instance, ethersSigner, requests, canDecrypt], () => {
   })
 }, { immediate: true })
 
-// State for tracking operations
 const isEncrypting = ref(false)
 const encryptError = ref<Error | null>(null)
 
-// State
 const message = ref<string>("")
 const isProcessing = ref(false)
 const amount = ref<string>("100")
 const recipient = ref<string>("")
 
-// Extract decrypted value from results
 const decryptedValue = computed(() => {
   if (!balanceHandle.value) {
     return null
@@ -488,40 +462,32 @@ const isDecrypted = computed(() => {
   return Boolean(balanceHandle.value && decryptedValue.value !== null)
 })
 
-// Core Functions - Fixed for Proper FHEVM Contract Interaction
 const handleDeposit = async () => {
   if (!isConnected.value || !bankConfig.address) return
   
   isProcessing.value = true
   message.value = "💰 Depositing to bank..."
-  
-  // Clear previous decrypted value since we're making a new transaction
-  // The decrypted value will be cleared automatically when the handle changes
-  
+
   try {
-    // 0. Check network first
     const expectedChainId = 11155111 // Sepolia
     if (chainId.value !== expectedChainId) {
       message.value = `⚠️ Wrong network! Please switch to Sepolia (Chain ID: ${expectedChainId}). Current: ${chainId.value}`
       return
     }
 
-    // 1. Ensure FHEVM instance is ready
     if (!state.value.instance) {
       throw new Error("FHEVM instance not ready")
     }
     
-    // 2. Create proper externalEuint64 with proof for FHEBank.sol using correct FHEVM pattern
     message.value = "🔐 Creating encrypted input..."
     
     let externalEuint64: string
     let inputProof: string
     
     try {
-      // Use the correct FHEVM pattern 
       const userAddress = address.value!
       const input = state.value.instance.createEncryptedInput(bankConfig.address, userAddress)
-      input.add64(parseInt(amount.value)) // Deposit amount (64-bit for FHEBank)
+      input.add64(parseInt(amount.value)) 
       const encryptedResult = await input.encrypt()
       
       
@@ -533,10 +499,8 @@ const handleDeposit = async () => {
         throw new Error("Encryption failed - no inputProof returned")
       }
       
-      // 3. Convert FHEVM objects to proper format using buildParamsFromAbi logic
       message.value = `🔐 Encrypted: ${encryptedResult.handles[0].toString().slice(0, 20)}...`
       
-      // Convert Uint8Array to hex string for bytes32 and bytes
       const toHex = (data: Uint8Array) => {
         if (!data || !Array.isArray(Array.from(data))) {
           throw new Error("Invalid data for hex conversion")
@@ -553,14 +517,11 @@ const handleDeposit = async () => {
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
-    // 4. Call contract with proper hex format
     message.value = "📝 Signing transaction..."
     
-    // Reset any previous write state
     resetWrite()
     
     try {
-      // Write to contract with proper hex strings
       const txResult = await writeBank({
       address: bankConfig.address as `0x${string}`,
       abi: bankConfig.abi as any,
@@ -570,11 +531,9 @@ const handleDeposit = async () => {
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
-      // Wait for transaction to be confirmed
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Deposit completed! Refreshing balance..."
-      // Now fetch the balance after the transaction is confirmed
       await fetchBalanceHandle()
       
     } catch (txError) {
@@ -595,26 +554,20 @@ const handleWithdraw = async () => {
   isProcessing.value = true
   message.value = "💸 Withdrawing from bank..."
   
-  // Clear previous decrypted value since we're making a new transaction
-  // The decrypted value will be cleared automatically when the handle changes
-  
   try {
-    // 1. Ensure FHEVM instance is ready
     if (!state.value.instance) {
       throw new Error("FHEVM instance not ready")
     }
     
-    // 2. Create proper externalEuint64 with proof for FHEBank.sol using correct FHEVM pattern
     message.value = "🔐 Creating encrypted input..."
     
     let externalEuint64: string
     let inputProof: string
     
     try {
-      // Use the correct FHEVM pattern from React example
       const userAddress = address.value!
       const input = state.value.instance.createEncryptedInput(bankConfig.address, userAddress)
-      input.add64(parseInt(amount.value)) // Withdraw amount (64-bit for FHEBank)
+      input.add64(parseInt(amount.value)) 
       const encryptedResult = await input.encrypt()
       
       
@@ -626,10 +579,8 @@ const handleWithdraw = async () => {
         throw new Error("Encryption failed - no inputProof returned")
       }
       
-      // 3. Convert FHEVM objects to proper format using buildParamsFromAbi logic
       message.value = `🔐 Encrypted: ${encryptedResult.handles[0].toString().slice(0, 20)}...`
       
-      // Convert Uint8Array to hex string for bytes32 and bytes
       const toHex = (data: Uint8Array) => {
         if (!data || !Array.isArray(Array.from(data))) {
           throw new Error("Invalid data for hex conversion")
@@ -646,14 +597,11 @@ const handleWithdraw = async () => {
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
-    // 4. Call contract with proper hex format
     message.value = "📝 Signing transaction..."
     
-    // Reset any previous write state
     resetWrite()
     
     try {
-      // Write to contract with proper hex strings
       const txResult = await writeBank({
       address: bankConfig.address as `0x${string}`,
       abi: bankConfig.abi as any,
@@ -663,12 +611,10 @@ const handleWithdraw = async () => {
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
-      // Wait for transaction to be confirmed
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Withdrawal completed! Refreshing balance..."
       
-      // Now fetch the balance after the transaction is confirmed
       await fetchBalanceHandle()
       
     } catch (txError) {
@@ -689,9 +635,6 @@ const handleTransfer = async () => {
   isProcessing.value = true
   message.value = "🔄 Transferring funds..."
   
-  // Clear previous decrypted value since we're making a new transaction
-  // The decrypted value will be cleared automatically when the handle changes
-  
   try {
     const amountNum = parseInt(amount.value)
     if (isNaN(amountNum) || amountNum <= 0) {
@@ -704,22 +647,19 @@ const handleTransfer = async () => {
       return
     }
 
-    // 1. Ensure FHEVM instance is ready
     if (!state.value.instance) {
       throw new Error("FHEVM instance not ready")
     }
     
-    // 2. Create proper externalEuint64 with proof for FHEBank.sol using correct FHEVM pattern
     message.value = "🔐 Creating encrypted input..."
     
     let externalEuint64: string
     let inputProof: string
     
     try {
-      // Use the correct FHEVM pattern from React example
       const userAddress = address.value!
       const input = state.value.instance.createEncryptedInput(bankConfig.address, userAddress)
-      input.add64(parseInt(amount.value)) // Transfer amount (64-bit for FHEBank)
+      input.add64(parseInt(amount.value)) 
       const encryptedResult = await input.encrypt()
       
       
@@ -731,10 +671,8 @@ const handleTransfer = async () => {
         throw new Error("Encryption failed - no inputProof returned")
       }
       
-      // 3. Convert FHEVM objects to proper format using buildParamsFromAbi logic
       message.value = `🔐 Encrypted: ${encryptedResult.handles[0].toString().slice(0, 20)}...`
       
-      // Convert Uint8Array to hex string for bytes32 and bytes
       const toHex = (data: Uint8Array) => {
         if (!data || !Array.isArray(Array.from(data))) {
           throw new Error("Invalid data for hex conversion")
@@ -751,14 +689,11 @@ const handleTransfer = async () => {
       throw new Error(`Encryption failed: ${encryptError instanceof Error ? encryptError.message : String(encryptError)}`)
     }
     
-    // 4. Call contract with proper hex format
     message.value = "📝 Signing transaction..."
     
-    // Reset any previous write state
     resetWrite()
     
     try {
-      // Write to contract with proper hex strings
       const txResult = await writeBank({
       address: bankConfig.address as `0x${string}`,
       abi: bankConfig.abi as any,
@@ -768,12 +703,10 @@ const handleTransfer = async () => {
       
       message.value = "⏳ Waiting for transaction confirmation..."
       
-      // Wait for transaction to be confirmed
       await new Promise(resolve => setTimeout(resolve, 2000))
       
       message.value = "✅ Transfer completed! Refreshing balance..."
       
-      // Now fetch the balance after the transaction is confirmed
       await fetchBalanceHandle()
       
     } catch (txError) {
@@ -800,18 +733,14 @@ const handleDecryptBalance = async () => {
   }
 
   try {
-    // Use the signature-based decryption
     await performDecrypt()
     
-    // Wait a moment for results to be processed
     await new Promise(resolve => setTimeout(resolve, 100))
     
-    // Check if we got a valid result
     if (decryptedValue.value === null) {
       logger.warn("Bank Decryption returned null", { results: results.value })
     }
     
-    // The decrypted value will be available in results and automatically displayed
     message.value = `✅ Balance decryption completed! Value: ${decryptedValue.value}`
     
   } catch (error) {
@@ -820,8 +749,6 @@ const handleDecryptBalance = async () => {
   }
 }
 
-// Auto-initialize on mount
 onMounted(() => {
-  // FHEVM will auto-initialize through the composable
 })
 </script>
